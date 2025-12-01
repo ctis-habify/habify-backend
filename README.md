@@ -139,11 +139,11 @@ feat: implement routine creation
 ⸻
 
 11. Database Configuration
-Please create config/.env file and add these in: 
+Please create .env file and add these in: 
 
 DB_HOST=localhost
 DB_PORT=5433
-DB_USER=habify_user
+DB_USER=username
 DB_PASSWORD=habify_pass
 DB_NAME=habify_db
 
