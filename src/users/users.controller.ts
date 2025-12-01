@@ -9,7 +9,7 @@ export class UsersController {
   @UseGuards(AuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
-    return req.user; // Now this will actually contain the user data!
+    return req.user; // This will actually contain the user data
   }
 
   @Get()
