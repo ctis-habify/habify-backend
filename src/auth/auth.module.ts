@@ -14,6 +14,6 @@ import { AuthController } from './auth.controller';
   ],
   controllers: [AuthController], // handles /auth routes
   providers: [AuthService], // main authentication logic
-  exports: [AuthService], // allows other modules to use AuthService if needed
+  exports: [AuthService, JwtModule], // allows other modules to use AuthService if needed
 })
 export class AuthModule {}

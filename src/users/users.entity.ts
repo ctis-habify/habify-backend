@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { Routine } from 'src/routines/routines.entity';
 
 export enum Gender {
   FEMALE = 'female',
@@ -59,4 +61,7 @@ export class User {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @OneToMany(() => Routine, (routine) => routine.user)
+  routines?: Routine[];
 }
