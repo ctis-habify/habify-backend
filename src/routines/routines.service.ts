@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Routine } from './routines.entity';
 import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
+import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
 
 @Injectable()
 export class RoutinesService {
@@ -32,5 +33,26 @@ export class RoutinesService {
     });
 
     return this.routineRepo.save(routine);
+  }
+
+  // update routine
+  async updateRoutine(userId: string, routineId: string, dto: UpdateRoutineDto) {
+    const routine = await this.routineRepo.findOne({
+      where: { id: routineId, user_id: userId },
+    });
+    if (!routine) throw new NotFoundException('Routine not found or access denied');
+
+    Object.assign(routine, dto);
+    //if (dto.startDate) routine.startDate = new Date(dto.startDate); // In Create Routine DTO, startDate is not exist
+
+    return this.routineRepo.save(routine);
+  }
+
+  // delete routine
+  async deleteRoutine(userId: string, routineId: string) {
+    const result = await this.routineRepo.delete({ id: routineId, user_id: userId });
+    if (result.affected === 0)
+      throw new NotFoundException('Routine not found or access denied');
+    return { message: 'Routine deleted successfully' };
   }
 }
