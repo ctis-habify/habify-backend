@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RoutinesModule } from './routines/routines.module';
+import { CategoriesModule } from './categories/categories.module';
+import { RoutineLogsModule } from './routine_logs/routine_logs.module';
 
 @Module({
   imports: [
@@ -25,6 +28,8 @@ import { RoutinesModule } from './routines/routines.module';
     AuthModule,
     UsersModule,
     RoutinesModule,
+    CategoriesModule,
+    RoutineLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
