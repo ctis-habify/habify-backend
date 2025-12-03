@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+} from 'typeorm';
 import { Routine } from '../routines/routines.entity';
 
 @Entity('routine_logs')
@@ -21,4 +28,7 @@ export class RoutineLog {
 
   @Column({ name: 'user_id' })
   userId: string;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
 }
