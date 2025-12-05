@@ -7,7 +7,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Gender } from '../../users/users.entity';
+import { Gender } from 'src/users/users.entity';
 
 export class RegisterDto {
   @ApiProperty({ example: 'Sueda Akça' })
