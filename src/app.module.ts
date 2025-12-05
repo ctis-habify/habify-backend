@@ -10,6 +10,7 @@ import { RoutinesModule } from './routines/routines.module';
 import { CategoriesModule } from './categories/categories.module';
 import { RoutineLogsModule } from './routine_logs/routine_logs.module';
 import { RoutineListsModule } from './routine_lists/routine_lists.module';
+import { XpLogsModule } from './xp_logs/xp_logs.module';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { RoutineListsModule } from './routine_lists/routine_lists.module';
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,
-      port: 5433,
+      port: 5432,
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
@@ -32,6 +33,7 @@ import { RoutineListsModule } from './routine_lists/routine_lists.module';
     CategoriesModule,
     RoutineLogsModule,
     RoutineListsModule,
+    XpLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
