@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RoutineList } from './routine_lists.entity';
-import { CreateRoutineListDto } from './dto/create-routine-list.dto';
+import { CreateRoutineListDto } from '../common/dto/routines/create-routine-list.dto';
 import { Category } from '../categories/categories.entity';
 
 @Injectable()

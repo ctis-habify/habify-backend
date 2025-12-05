@@ -4,9 +4,10 @@ import { RoutineListsService } from './routine_lists.service';
 import { RoutineListsController } from './routine_lists.controller';
 import { RoutineList } from './routine_lists.entity';
 import { Category } from '../categories/categories.entity';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([RoutineList, Category])],
+  imports: [AuthModule, TypeOrmModule.forFeature([RoutineList, Category])],
   controllers: [RoutineListsController],
   providers: [RoutineListsService],
 })
