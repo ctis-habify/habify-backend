@@ -20,11 +20,6 @@ export class RoutineList {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  // --- İLİŞKİLER (Düzeltilen Yerler) ---
-
-  // 1. User İlişkisi (Tek Yönlü)
-  // BURAYA DİKKAT: Parantez içinde sadece () => User var.
-  // Yanında virgül veya (user) => user... YOK.
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
@@ -32,8 +27,6 @@ export class RoutineList {
   @Column({ name: 'user_id' })
   userId: string;
 
-  // 2. Category İlişkisi (Tek Yönlü)
-  // Burada da sadece () => Category var.
   @ManyToOne(() => Category)
   @JoinColumn({ name: 'category_id' })
   category: Category;
