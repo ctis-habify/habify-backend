@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as dotenv from 'dotenv';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -14,7 +15,7 @@ async function bootstrap() {
     }),
   );
 
-  // 🔹 Swagger config
+  // Swagger config
   const config = new DocumentBuilder()
     .setTitle('Habify API')
     .setDescription('Habify dev backend (in-memory users, auth)')
@@ -25,7 +26,7 @@ async function bootstrap() {
         scheme: 'bearer',
         bearerFormat: 'JWT',
       },
-      'access-token', // key ismi önemli
+      'access-token',
     )
     .build();
 
