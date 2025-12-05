@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { RoutineListsService } from './routine_lists.service';
+import { RoutineListsController } from './routine_lists.controller';
+import { RoutineList } from './routine_lists.entity';
+import { Category } from '../categories/categories.entity';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([RoutineList, Category])],
+  controllers: [RoutineListsController],
+  providers: [RoutineListsService],
+})
+export class RoutineListsModule {}

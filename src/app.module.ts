@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { RoutinesModule } from './routines/routines.module';
 import { CategoriesModule } from './categories/categories.module';
 import { RoutineLogsModule } from './routine_logs/routine_logs.module';
+import { RoutineListsModule } from './routine_lists/routine_lists.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { RoutineLogsModule } from './routine_logs/routine_logs.module';
     RoutinesModule,
     CategoriesModule,
     RoutineLogsModule,
+    RoutineListsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
