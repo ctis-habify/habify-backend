@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsBoolean,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -10,14 +11,21 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GetRoutinesQueryDto {
   @ApiPropertyOptional({
-    description: 'Sadece belirtilen liste (RoutineList) için rutinler',
+    description: 'Rutin listesi ID\'sine göre filtrele (routine_list_id)',
   })
   @IsOptional()
   @IsUUID()
   listId?: string;
 
   @ApiPropertyOptional({
-    description: 'Kategoriye göre filtrele (RoutineList.category_id)',
+    description: 'Rutin grubu ID\'sine göre filtrele (routine_group_id)',
+  })
+  @IsOptional()
+  @IsUUID()
+  routineGroupId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Kategoriye göre filtrele (RoutineList.category_id üzerinden)',
   })
   @IsOptional()
   @IsUUID()
@@ -32,7 +40,15 @@ export class GetRoutinesQueryDto {
   frequencyType?: string;
 
   @ApiPropertyOptional({
-    description: 'Liste başlığına göre arama',
+    description: 'AI doğrulama durumuna göre filtrele',
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isAiVerified?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Rutin listesi başlığına göre arama',
     example: 'spor',
   })
   @IsOptional()
@@ -41,15 +57,17 @@ export class GetRoutinesQueryDto {
 
   @ApiPropertyOptional({
     description: 'Sıralama alanı',
-    enum: ['startTime', 'createdAt', 'title'],
+    enum: ['startTime', 'endTime', 'createdAt', 'frequencyType'],
+    default: 'createdAt',
   })
   @IsOptional()
   @IsString()
-  sortBy?: 'startTime' | 'createdAt' | 'title';
+  sortBy?: 'startTime' | 'endTime' | 'createdAt' | 'frequencyType';
 
   @ApiPropertyOptional({
     description: 'Sıralama yönü',
     enum: ['asc', 'desc'],
+    default: 'desc',
   })
   @IsOptional()
   @IsString()

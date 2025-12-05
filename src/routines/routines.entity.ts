@@ -6,8 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { User } from 'src/users/users.entity';
-import { RoutineList } from 'src/routines/routine-list.entity';
+import { User } from '../users/users.entity';
+import { RoutineList } from './routine-list.entity';
 
 @Entity({ name: 'routines' })
 export class Routine {
@@ -25,7 +25,7 @@ export class Routine {
   @Column({ name: 'user_id' })
   userId: string;
 
-  @ManyToOne(() => RoutineList, (list) => list.routines, { nullable: true })
+  @ManyToOne(() => RoutineList, { nullable: true })
   @JoinColumn({ name: 'routine_group_id' })
   routineGroup: RoutineList;
 

@@ -1,89 +1,114 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RoutineList } from './routine-list.entity';
+import { Routine } from './routines.entity';
 import { GetRoutinesQueryDto } from './dto/get-routines-query';
 
 @Injectable()
 export class RoutinesService {
   constructor(
-    @InjectRepository(RoutineList)
-    private readonly routineListRepo: Repository<RoutineList>,
-    // Diğer repolara şu an bu fonksiyonda ihtiyacımız yoksa inject etmeyebiliriz
+    @InjectRepository(Routine)
+    private readonly routineRepo: Repository<Routine>,
   ) {}
 
-  async findAllForUser(userId: number, query: GetRoutinesQueryDto) { // userId tipine dikkat (number/string)
+  async findAll(userId: string, query: GetRoutinesQueryDto) {
     const {
       listId,
+      routineGroupId,
       categoryId,
       frequencyType,
+      isAiVerified,
       search,
-      sortBy,
-      sortOrder = 'DESC',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
       page = 1,
       limit = 20,
     } = query;
 
-    const qb = this.routineListRepo.createQueryBuilder('list')
-      .leftJoinAndSelect('list.category', 'category')
-      .leftJoinAndSelect('list.routines', 'routine')
-      .where('list.userId = :userId', { userId });
+    const qb = this.routineRepo
+      .createQueryBuilder('routine')
+      .leftJoinAndSelect('routine.routineList', 'routineList')
+      .leftJoinAndSelect('routineList.category', 'category')
+      .where('routine.userId = :userId', { userId });
 
     // --- Filtreler ---
 
     if (listId) {
-      qb.andWhere('list.id = :listId', { listId });
+      qb.andWhere('routineList.id = :listId', { listId });
+    }
+
+    if (routineGroupId) {
+      qb.andWhere('routine.routineGroupId = :routineGroupId', {
+        routineGroupId,
+      });
     }
 
     if (categoryId) {
-      qb.andWhere('list.categoryId = :categoryId', { categoryId });
+      qb.andWhere('routineList.categoryId = :categoryId', { categoryId });
     }
 
     if (frequencyType) {
-      // Sadece bu frekansta rutini olan listeleri getirir
       qb.andWhere('routine.frequencyType = :frequencyType', { frequencyType });
     }
 
+    if (isAiVerified !== undefined) {
+      qb.andWhere('routine.isAiVerified = :isAiVerified', { isAiVerified });
+    }
+
     if (search) {
-      // Hem liste başlığında hem de rutin başlığında arama yapalım
-      qb.andWhere(
-        '(LOWER(list.title) LIKE :search OR LOWER(routine.title) LIKE :search)',
-        { search: `%${search.toLowerCase()}%` },
-      );
+      qb.andWhere('LOWER(routineList.title) LIKE :search', {
+        search: `%${search.toLowerCase()}%`,
+      });
     }
 
     // --- Sıralama ---
-    // Not: İlişkili tablolarda (OneToMany) sıralama yaparken dikkatli olunmalıdır.
     const orderDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-    if (sortBy === 'startTime') {
-      qb.orderBy('routine.startTime', orderDirection);
-    } else if (sortBy === 'title') {
-      qb.orderBy('list.title', orderDirection);
-    } else {
-      // Default: List creation date
-      qb.orderBy('list.createdAt', orderDirection);
+    switch (sortBy) {
+      case 'startTime':
+        qb.orderBy('routine.startTime', orderDirection);
+        break;
+      case 'endTime':
+        qb.orderBy('routine.endTime', orderDirection);
+        break;
+      case 'frequencyType':
+        qb.orderBy('routine.frequencyType', orderDirection);
+        break;
+      case 'createdAt':
+      default:
+        qb.orderBy('routine.createdAt', orderDirection);
+        break;
     }
 
     // --- Pagination ---
     qb.skip((page - 1) * limit).take(limit);
 
     // Veriyi çek
-    const [lists, total] = await qb.getManyAndCount();
+    const [routines, total] = await qb.getManyAndCount();
 
     // --- Response Formatlama ---
-    const data = lists.map((list) => ({
-      id: list.id,
-      title: list.title,
-      category: list.category ? { id: list.category.id, name: list.category.name } : null,
-      routines: (list.routines ?? []).map((r) => ({
-        id: r.id,
-        frequencyType: r.frequencyType,
-        startTime: r.startTime,
-        endTime: r.endTime,
-        isAiVerified: r.isAiVerified,
-        // Frekansa göre filtrelendiyse sadece o frekanstakiler döner (TypeORM mantığı gereği)
-      })),
+    const data = routines.map((routine) => ({
+      id: routine.id,
+      userId: routine.userId,
+      frequencyType: routine.frequencyType,
+      frequencyDetail: routine.frequencyDetail,
+      startTime: routine.startTime,
+      endTime: routine.endTime,
+      isAiVerified: routine.isAiVerified,
+      routineGroupId: routine.routineGroupId,
+      createdAt: routine.createdAt,
+      routineList: routine.routineList
+        ? {
+            id: routine.routineList.id,
+            title: routine.routineList.title,
+            category: routine.routineList.category
+              ? {
+                  id: routine.routineList.category.id,
+                  name: routine.routineList.category.name,
+                }
+              : null,
+          }
+        : null,
     }));
 
     return {

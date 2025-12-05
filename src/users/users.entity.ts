@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { Routine } from 'src/routines/routines.entity';
+import { Routine } from '../routines/routines.entity';
 
 export enum Gender {
   FEMALE = 'female',
