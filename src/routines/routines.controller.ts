@@ -14,6 +14,7 @@ import { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
+import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
 
 @ApiTags('routines')
 @ApiBearerAuth('access-token')
@@ -56,5 +57,13 @@ export class RoutinesController {
   @Delete(':id')
   async deleteRoutine(@Req() req, @Param('id') id: string) {
     return this.routinesService.deleteRoutine(req.user.id, id);
+  }
+
+  // list grouped routines
+  @UseGuards(AuthGuard)
+  @Get('routines/grouped')
+  async getMyRoutinesListed(@Req() req): Promise<RoutineListWithRoutinesDto[]> {
+    const userId = req.user.id;
+    return this.routinesService.getAllRoutinesByList(userId);
   }
 }

@@ -5,7 +5,12 @@ export class CreateRoutineDto {
   @ApiProperty({
     example: '3',
   })
-  routineGroupId: number;
+  routineListId: number;
+
+  @ApiProperty({
+    example: 'Sport Routine 1',
+  })
+  routineName: string;
 
   @ApiProperty({
     example: 'Daily',
@@ -38,4 +43,7 @@ export class CreateRoutineDto {
   })
   @IsBoolean()
   isAiVerified: boolean;
+
+  @ApiProperty({ example: '10/10/2025' })
+  startDate: string;
 }
