@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Req,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { RoutinesService } from './routines.service';
@@ -25,7 +26,7 @@ export class RoutinesController {
   @UseGuards(AuthGuard)
   @Get('me')
   async getMyRoutines(@Req() req) {
-    const userId = req.user.id;
+    const userId = req.user.sub;
     return this.routinesService.getUserRoutines(userId);
   }
 
@@ -33,11 +34,13 @@ export class RoutinesController {
   @UseGuards(AuthGuard)
   @Post()
   async createRoutine(@Req() req, @Body() dto: CreateRoutineDto) {
-    const userId = req.user.id;
+    const userId = req.user?.sub;
 
+    console.log('USER ID:', userId);
+    console.log('ROUTINE LIST ID: ', dto.routineListId);
     return this.routinesService.createRoutine({
-      userId,
       ...dto,
+      userId,
     });
   }
 
@@ -49,21 +52,21 @@ export class RoutinesController {
     @Param('id') id: string,
     @Body() dto: UpdateRoutineDto,
   ) {
-    return this.routinesService.updateRoutine(req.user.id, id, dto);
+    return this.routinesService.updateRoutine(req.user.sub, id, dto);
   }
 
   // delete routine
   @UseGuards(AuthGuard)
   @Delete(':id')
   async deleteRoutine(@Req() req, @Param('id') id: string) {
-    return this.routinesService.deleteRoutine(req.user.id, id);
+    return this.routinesService.deleteRoutine(req.user.sub, id);
   }
 
   // list grouped routines
   @UseGuards(AuthGuard)
   @Get('routines/grouped')
   async getMyRoutinesListed(@Req() req): Promise<RoutineListWithRoutinesDto[]> {
-    const userId = req.user.id;
+    const userId = req.user.sub;
     return this.routinesService.getAllRoutinesByList(userId);
   }
 }

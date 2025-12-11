@@ -12,11 +12,11 @@ export class RoutineListsController {
 
   @Post()
   create(@Body() createDto: CreateRoutineListDto, @Req() req) {
-    return this.routineListsService.create(createDto, req.user.id);
+    return this.routineListsService.create(createDto, req.user.sub);
   }
 
   @Get()
   findAll(@Req() req) {
-    return this.routineListsService.findAll(req.user.id);
+    return this.routineListsService.findAll(req.user.sub);
   }
 }
