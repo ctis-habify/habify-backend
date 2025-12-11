@@ -3,13 +3,15 @@ import { IsBoolean, IsOptional, IsString, IsInt } from 'class-validator';
 
 export class CreateRoutineDto {
   @ApiProperty({
-    example: '3',
+    example: '1',
   })
+  @IsInt()
   routineListId: number;
 
   @ApiProperty({
     example: 'Sport Routine 1',
   })
+  @IsString()
   routineName: string;
 
   @ApiProperty({
@@ -45,5 +47,6 @@ export class CreateRoutineDto {
   isAiVerified: boolean;
 
   @ApiProperty({ example: '10/10/2025' })
+  @IsString()
   startDate: string;
 }

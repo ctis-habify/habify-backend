@@ -7,13 +7,10 @@ export class Routine {
   id: string;
 
   @Column()
-  routine_name: string;
-
-  @Column()
   user_id: string;
 
-  @Column({ name: 'routine_list_id' })
-  routineListId: number;
+  @Column()
+  routine_list_id: number;
 
   @Column()
   frequency_type: string; // 'daily' | 'weekly'
@@ -29,6 +26,9 @@ export class Routine {
 
   @Column({ default: false })
   is_ai_verified: boolean;
+
+  @Column()
+  routine_name: string;
 
   @Column({ type: 'date' })
   start_date: string;

@@ -22,7 +22,7 @@ export class RoutineLogsController {
 
   @Post()
   create(@Body() createLogDto: CreateRoutineLogDto, @Req() req) {
-    return this.logsService.create(createLogDto, req.user.id);
+    return this.logsService.create(createLogDto, req.user.sub);
   }
 
   @Get('routine/:routineId')
@@ -31,7 +31,7 @@ export class RoutineLogsController {
     @Param('routineId', ParseIntPipe) routineId: string,
     @Req() req,
   ): Promise<RoutineLog[]> {
-    const userId = req.user.id as string; // Coming from AuthGuard
+    const userId = req.user.sub as string; // Coming from AuthGuard
     return this.logsService.listLogs(routineId, userId);
   }
 }

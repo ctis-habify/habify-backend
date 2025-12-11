@@ -37,20 +37,22 @@ export class RoutinesService {
   }
 
   // create new routine
-  async createRoutine(data: { userId: string } & CreateRoutineDto): Promise<Routine> {
+  async createRoutine(data: CreateRoutineDto & { userId: string }): Promise<Routine> {
     const routine = this.routineRepo.create({
       user_id: data.userId,
-      routineListId: data.routineListId,
+      routine_list_id: data.routineListId,
+      routine_name: data.routineName,
       frequency_type: data.frequencyType,
       frequency_detail: data.frequencyDetail ?? null,
       start_time: data.startTime ?? '00:00:00',
       end_time: data.endTime ?? '23:59:59',
       start_date: data.startDate,
       is_ai_verified: false,
-      routine_name: data.routineName,
     });
 
     const saved = await this.routineRepo.save(routine);
+    console.log('CREATE ROUTINE DATA >>>', data);
+    console.log('CREATE ROUTINE ENTITY >>>', routine);
 
     // Worker için ilk job
     await this.scheduleStatusJob(saved);
