@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { RoutineList } from '../routine_lists/routine_lists.entity';
 
 @Entity('routines')
 export class Routine {
@@ -6,16 +7,19 @@ export class Routine {
   id: string;
 
   @Column()
+  routine_name: string;
+
+  @Column()
   user_id: string;
 
-  @Column()
-  routine_group_id: number;
+  @Column({ name: 'routine_list_id' })
+  routineListId: number;
 
   @Column()
-  frequency_type: string;
+  frequency_type: string; // 'daily' | 'weekly'
 
   @Column({ nullable: true })
-  frequency_detail: number;
+  frequency_detail: number; // Haftalık ise: 0=Mon,1=Tue...
 
   @Column({ type: 'time', default: '00:00:00' })
   start_time: string;
@@ -25,4 +29,11 @@ export class Routine {
 
   @Column({ default: false })
   is_ai_verified: boolean;
+
+  @Column({ type: 'date' })
+  start_date: string;
+
+  @ManyToOne(() => RoutineList, list => list.routines)
+  @JoinColumn({ name: 'routine_list_id' })
+  routine_list: RoutineList;
 }
