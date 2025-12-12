@@ -7,11 +7,12 @@ import {
   Get,
   ParseIntPipe,
   Param,
+  Query,
 } from '@nestjs/common';
 import { RoutineLogsService } from './routine_logs.service';
 import { CreateRoutineLogDto } from '../common/dto/routines/create-routine-logs.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { RoutineLog } from './routine_logs.entity';
 
 @ApiBearerAuth('access-token')
@@ -33,5 +34,18 @@ export class RoutineLogsController {
   ): Promise<RoutineLog[]> {
     const userId = req.user.sub as string; // Coming from AuthGuard
     return this.logsService.listLogs(routineId, userId);
+  }
+
+  @Get('calendar')
+  @ApiOkResponse({ type: RoutineLog, isArray: true })
+  @ApiQuery({ name: 'startDate', example: '2025-12-01', required: true })
+  @ApiQuery({ name: 'endDate', example: '2025-12-31', required: true })
+  async getCalendar(
+    @Req() req,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const userId = req.user.sub as string;
+    return this.logsService.getCalendarLogs(userId, startDate, endDate);
   }
 }

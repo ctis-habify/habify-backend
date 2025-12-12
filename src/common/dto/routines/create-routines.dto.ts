@@ -46,7 +46,7 @@ export class CreateRoutineDto {
   @IsBoolean()
   isAiVerified: boolean;
 
-  @ApiProperty({ example: '10/10/2025' })
+  @ApiProperty({ example: '2025-10-10' })
   @IsString()
   startDate: string;
 }
