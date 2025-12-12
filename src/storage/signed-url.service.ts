@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { GcsService } from './gcs.service';
 
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'] as const;
+type AllowedMime = (typeof ALLOWED_MIME)[number];
 
 function isAllowedMime(mime: string): mime is AllowedMime {
   return ALLOWED_MIME.includes(mime as AllowedMime);
