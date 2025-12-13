@@ -39,6 +39,29 @@ export class XpLogsService {
     };
   }
 
+  async awardXP(userId: string, routineId: string, amount: number = 10) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) return;
+
+    const newLog = this.xpLogRepository.create({
+      amount: amount,
+      eventType: 'ROUTINE_COMPLETED',
+      user: user,
+    });
+
+    await this.xpLogRepository.save(newLog);
+
+    user.totalXp = (user.totalXp || 0) + amount;
+    await this.userRepository.save(user);
+
+    return newLog;
+  }
+
+  async getTotalXp(userId: string): Promise<number> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    return user ? user.totalXp || 0 : 0;
+  }
+
   async findAll(userId: string) {
     return await this.xpLogRepository.find({
       where: { userId },
