@@ -1,3 +1,4 @@
+import { Between } from 'typeorm';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -39,6 +40,35 @@ export class RoutineLogsService {
         routine: { id: routineId },
       },
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getCalendarLogs(
+    userId: string,
+    routineId: string,
+    startDate: string,
+    endDate: string,
+  ) {
+    if (!startDate || !endDate) return [];
+    const logs = await this.logsRepository.find({
+      where: {
+        userId: userId,
+        routine: { id: String(routineId) },
+        isVerified: true,
+        logDate: Between(new Date(startDate), new Date(endDate)),
+      },
+      order: { logDate: 'ASC' },
+    });
+
+    return logs.map(log => {
+      return {
+        date:
+          log.logDate instanceof Date
+            ? log.logDate.toISOString().split('T')[0]
+            : new Date(log.logDate).toISOString().split('T')[0],
+
+        isDone: true,
+      };
     });
   }
 }
