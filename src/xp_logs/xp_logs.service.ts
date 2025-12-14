@@ -45,7 +45,7 @@ export class XpLogsService {
 
     const newLog = this.xpLogRepository.create({
       amount: amount,
-      eventType: 'ROUTINE_COMPLETED',
+      eventType: 'PERSONAL',
       user: user,
     });
 
