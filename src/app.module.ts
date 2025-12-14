@@ -20,14 +20,12 @@ import { StorageModule } from './storage/storage.module';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST,
-      port: 5433,
-      username: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      url: process.env.DATABASE_URL,
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: false,
     }),
+
     AuthModule,
     UsersModule,
     RoutinesModule,
