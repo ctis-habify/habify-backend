@@ -39,7 +39,7 @@ export class XpLogsService {
     };
   }
 
-  async awardXP(userId: string, routineId: string, amount: number = 10) {
+  async awardXP(userId: string, amount: number = 10) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) return;
 
