@@ -7,7 +7,6 @@ import {
   Patch,
   Post,
   Req,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { RoutinesService } from './routines.service';

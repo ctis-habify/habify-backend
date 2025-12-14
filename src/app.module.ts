@@ -11,6 +11,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { RoutineLogsModule } from './routine_logs/routine_logs.module';
 import { RoutineListsModule } from './routine_lists/routine_lists.module';
 import { XpLogsModule } from './xp_logs/xp_logs.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -19,14 +20,12 @@ import { XpLogsModule } from './xp_logs/xp_logs.module';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST,
-      port: 5433,
-      username: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      url: process.env.DATABASE_URL,
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: false,
     }),
+
     AuthModule,
     UsersModule,
     RoutinesModule,
@@ -34,6 +33,7 @@ import { XpLogsModule } from './xp_logs/xp_logs.module';
     RoutineLogsModule,
     RoutineListsModule,
     XpLogsModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
