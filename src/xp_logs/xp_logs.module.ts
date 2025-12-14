@@ -10,5 +10,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [AuthModule, TypeOrmModule.forFeature([XpLog, User])],
   controllers: [XpLogsController],
   providers: [XpLogsService],
+  exports: [XpLogsService],
 })
 export class XpLogsModule {}

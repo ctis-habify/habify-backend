@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { RoutineLog } from './routine_logs.entity';
 import { CreateRoutineLogDto } from '../common/dto/routines/create-routine-logs.dto';
 import { Routine } from '../routines/routines.entity';
+import { XpLogsService } from '../xp_logs/xp_logs.service';
 
 @Injectable()
 export class RoutineLogsService {
@@ -13,6 +14,7 @@ export class RoutineLogsService {
     private logsRepository: Repository<RoutineLog>,
     @InjectRepository(Routine)
     private routinesRepository: Repository<Routine>,
+    private xpLogsService: XpLogsService,
   ) {}
 
   async create(createLogDto: CreateRoutineLogDto, userId: string) {
@@ -30,7 +32,13 @@ export class RoutineLogsService {
       userId: userId,
     });
 
-    return await this.logsRepository.save(newLog);
+    const savedLog = await this.logsRepository.save(newLog);
+
+    if (savedLog.isVerified) {
+      await this.xpLogsService.awardXP(userId, 10);
+    }
+
+    return savedLog;
   }
 
   async listLogs(routineId: string, userId: string): Promise<RoutineLog[]> {
