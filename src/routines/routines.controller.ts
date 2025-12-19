@@ -15,6 +15,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
+import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
 
 @ApiTags('routines')
 @ApiBearerAuth('access-token')
@@ -63,9 +64,18 @@ export class RoutinesController {
 
   // list grouped routines
   @UseGuards(AuthGuard)
-  @Get('routines/grouped')
+  @Get('grouped')
   async getMyRoutinesListed(@Req() req): Promise<RoutineListWithRoutinesDto[]> {
     const userId = req.user.sub;
     return this.routinesService.getAllRoutinesByList(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('today')
+  //@ApiOperation({ summary: 'Get routines scheduled for today' })
+  //@ApiOkResponse({ type: [RoutineResponseDto] })
+  async getTodayRoutines(@Req() req): Promise<RoutineResponseDto[]> {
+    const userId = req.user.sub; // Accessing user ID from the token
+    return this.routinesService.getTodayRoutines(userId);
   }
 }

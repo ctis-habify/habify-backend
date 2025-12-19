@@ -14,13 +14,14 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { BullModule } from '@nestjs/bull';
 import * as redisStore from 'cache-manager-redis-store';
 import { RoutineStatusProcessor } from './routine-status.processor';
+import { RoutineLog } from 'src/routine_logs/routine_logs.entity';
 
 @Module({
   imports: [
     AuthModule,
 
     // TypeORM repository'ler
-    TypeOrmModule.forFeature([Routine, RoutineList, User, Category]),
+    TypeOrmModule.forFeature([Routine, RoutineLog, RoutineList, User, Category]),
 
     // Bull kuyruğu (routine durumlarını update eden worker için)
     BullModule.forRoot({
