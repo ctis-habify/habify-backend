@@ -225,7 +225,7 @@ export class RoutinesService {
     // Normalize today to YYYY-MM-DD string for comparison
     const todayString = today.toISOString().split('T')[0];
 
-    // 1. Calculate Day Index (Your app uses 0=Monday, JS uses 0=Sunday)
+    // 1. Calculate Day Index
     const jsDay = today.getDay(); // 0=Sun, 1=Mon, 2=Tue...
     const appDayIndex = jsDay === 0 ? 6 : jsDay - 1; // 0=Mon, ... 6=Sun
 
@@ -258,22 +258,41 @@ export class RoutinesService {
         userId: userId,
         // Check if logDate is within today's range OR exactly matches todayString
         logDate: Between(startOfDay, endOfDay),
-        isVerified: true, // Optional: Only count verified ones as "Completed"?
+        isVerified: true,
       },
     });
 
     // Create a Set of completed routine IDs for fast lookup
     const completedRoutineIds = new Set(todaysLogs.map(log => log.routine.id));
 
-    // 5. Map to DTO
-    return todaysRoutines.map(routine => ({
-      id: routine.id,
-      title: routine.routine_name,
-      category: routine.routine_list?.title || 'General',
-      startTime: routine.start_time,
-      endTime: routine.end_time,
-      frequency: routine.frequency_type,
-      isCompleted: completedRoutineIds.has(routine.id),
-    }));
+    const result = await Promise.all(
+      todaysRoutines.map(async routine => {
+        // A. Calculate End Time for TODAY
+        const [h, m, s] = routine.end_time.split(':').map(Number);
+        const endAt = new Date(); // Today
+        endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+
+        // B. Calculate Remaining Minutes
+        const now = new Date();
+        const diffMs = endAt.getTime() - now.getTime();
+        const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+
+        // C. Format Label (Reusing your existing helper method)
+        const remainingLabel = this.formatRemainingLabel(remainingMinutes);
+
+        return {
+          id: routine.id,
+          title: routine.routine_name,
+          category: routine.routine_list?.title || 'General',
+          startTime: routine.start_time,
+          endTime: routine.end_time,
+          frequency: routine.frequency_type,
+          isCompleted: completedRoutineIds.has(routine.id),
+          remainingLabel: remainingLabel,
+        };
+      }),
+    );
+
+    return result;
   }
 }

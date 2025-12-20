@@ -6,6 +6,7 @@ import { RoutineLog } from './routine_logs.entity';
 import { CreateRoutineLogDto } from '../common/dto/routines/create-routine-logs.dto';
 import { Routine } from '../routines/routines.entity';
 import { XpLogsService } from '../xp_logs/xp_logs.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class RoutineLogsService {
@@ -15,6 +16,7 @@ export class RoutineLogsService {
     @InjectRepository(Routine)
     private routinesRepository: Repository<Routine>,
     private xpLogsService: XpLogsService,
+    private usersService: UsersService,
   ) {}
 
   async create(createLogDto: CreateRoutineLogDto, userId: string) {
@@ -33,6 +35,9 @@ export class RoutineLogsService {
     });
 
     const savedLog = await this.logsRepository.save(newLog);
+
+    // 2. Update Streak (Now using the logic above)
+    await this.usersService.checkAndUpdateStreak(userId);
 
     if (savedLog.isVerified) {
       await this.xpLogsService.awardXP(userId, 10);

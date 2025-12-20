@@ -15,13 +15,17 @@ import { AuthGuard } from '../auth/auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
-import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
+import { UsersService } from 'src/users/users.service';
+import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
 
 @ApiTags('routines')
 @ApiBearerAuth('access-token')
 @Controller('routines')
 export class RoutinesController {
-  constructor(private readonly routinesService: RoutinesService) {}
+  constructor(
+    private readonly routinesService: RoutinesService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @UseGuards(AuthGuard)
   @Get('me')
@@ -74,8 +78,20 @@ export class RoutinesController {
   @Get('today')
   //@ApiOperation({ summary: 'Get routines scheduled for today' })
   //@ApiOkResponse({ type: [RoutineResponseDto] })
-  async getTodayRoutines(@Req() req): Promise<RoutineResponseDto[]> {
+  async getTodayRoutines(@Req() req): Promise<TodayScreenResponseDto> {
     const userId = req.user.sub; // Accessing user ID from the token
-    return this.routinesService.getTodayRoutines(userId);
+    // 1. Get Routines
+    const routines = await this.routinesService.getTodayRoutines(userId);
+
+    // 2. Get Streak (Just read the integer from DB)
+    const user = await this.usersService.findByEmail(req.user.email); // You might need to expose a findOne or getStreak method
+    const streak = user ? user.currentStreak : 0;
+
+    return {
+      streak: streak,
+      routines: routines,
+    };
+
+    //return this.routinesService.getTodayRoutines(userId);
   }
 }

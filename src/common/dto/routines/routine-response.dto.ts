@@ -24,4 +24,7 @@ export class RoutineResponseDto {
     description: 'True if the user has already completed this routine today',
   })
   isCompleted: boolean;
+
+  @ApiProperty({ example: '2 Hours', description: 'Formatted remaining time label' })
+  remainingLabel: string;
 }
