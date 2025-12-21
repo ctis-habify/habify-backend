@@ -1,11 +1,17 @@
 import { Between } from 'typeorm';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RoutineLog } from './routine_logs.entity';
-import { CreateRoutineLogDto } from '../common/dto/routines/create-routine-logs.dto';
 import { Routine } from '../routines/routines.entity';
 import { XpLogsService } from '../xp_logs/xp_logs.service';
+import { GcsService } from 'src/storage/gcs.service';
+import { AiService } from 'src/ai/ai.service';
 
 @Injectable()
 export class RoutineLogsService {
@@ -15,32 +21,48 @@ export class RoutineLogsService {
     @InjectRepository(Routine)
     private routinesRepository: Repository<Routine>,
     private xpLogsService: XpLogsService,
+    private gcsService: GcsService,
+    private aiService: AiService,
   ) {}
 
-  async create(createLogDto: CreateRoutineLogDto, userId: string) {
-    const { routineId, logDate, isVerified, verificationImageUrl } = createLogDto;
+  async create(routineId: string, verificationImageUrl: string, userId: string) {
     const routine = await this.routinesRepository.findOne({ where: { id: routineId } });
     if (!routine) {
       throw new NotFoundException('Routine not found');
     }
+    if (!verificationImageUrl) {
+      throw new BadRequestException('Verification image is required');
+    }
+
+    const signedReadUrl = await this.gcsService.getSignedReadUrl(
+      verificationImageUrl,
+      600,
+    );
+
+    const prompt = routine.routine_name ?? 'a photo of the required routine activity';
+
+    // AI verification
+    const aiResult = await this.aiService.verify({
+      imageUrl: signedReadUrl,
+      text: prompt,
+    });
+
+    if (!aiResult.verified) {
+      throw new ForbiddenException('Routine verification failed');
+    }
 
     const newLog = this.logsRepository.create({
-      logDate: new Date(logDate),
-      isVerified: isVerified || false,
-      verificationImageUrl: verificationImageUrl,
-      routine: routine,
-      userId: userId,
+      logDate: new Date(),
+      isVerified: true,
+      verificationImageUrl: verificationImageUrl, // GCS objectPath
+      routine,
+      userId,
     });
 
     const savedLog = await this.logsRepository.save(newLog);
-
-    if (savedLog.isVerified) {
-      await this.xpLogsService.awardXP(userId, 10);
-    }
-
+    await this.xpLogsService.awardXP(userId, 10);
     return savedLog;
   }
-
   async listLogs(routineId: string, userId: string): Promise<RoutineLog[]> {
     return await this.logsRepository.find({
       where: {
