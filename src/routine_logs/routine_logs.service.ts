@@ -12,6 +12,7 @@ import { Routine } from '../routines/routines.entity';
 import { XpLogsService } from '../xp_logs/xp_logs.service';
 import { GcsService } from 'src/storage/gcs.service';
 import { AiService } from 'src/ai/ai.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class RoutineLogsService {
@@ -23,6 +24,7 @@ export class RoutineLogsService {
     private xpLogsService: XpLogsService,
     private gcsService: GcsService,
     private aiService: AiService,
+    private usersService: UsersService,
   ) {}
 
   async create(routineId: string, verificationImageUrl: string, userId: string) {
@@ -49,6 +51,11 @@ export class RoutineLogsService {
 
     if (!aiResult.verified) {
       throw new ForbiddenException('Routine verification failed');
+    // 2. Update Streak (Now using the logic above)
+    await this.usersService.checkAndUpdateStreak(userId);
+
+    if (savedLog.isVerified) {
+      await this.xpLogsService.awardXP(userId, 10);
     }
 
     const newLog = this.logsRepository.create({

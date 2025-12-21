@@ -19,6 +19,8 @@ import { AiService } from 'src/ai/ai.service';
 import { GcsService } from 'src/storage/gcs.service';
 import { XpLogsService } from 'src/xp_logs/xp_logs.service';
 import { RoutineLogsService } from 'src/routine_logs/routine_logs.service';
+import { UsersService } from 'src/users/users.service';
+import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
 
 @ApiTags('routines')
 @ApiBearerAuth('access-token')
@@ -30,6 +32,7 @@ export class RoutinesController {
     private readonly gcs: GcsService,
     private readonly xp: XpLogsService,
     private readonly routineLogs: RoutineLogsService,
+    private readonly usersService: UsersService,
   ) {}
 
   @UseGuards(AuthGuard)
@@ -73,7 +76,7 @@ export class RoutinesController {
 
   // list grouped routines
   @UseGuards(AuthGuard)
-  @Get('routines/grouped')
+  @Get('grouped')
   async getMyRoutinesListed(@Req() req): Promise<RoutineListWithRoutinesDto[]> {
     const userId = req.user.sub;
     return this.routinesService.getAllRoutinesByList(userId);
@@ -90,5 +93,24 @@ export class RoutinesController {
     const aiResult = await this.ai.verify({ imageUrl: signedReadUrl, text: routineText });
     await this.routineLogs.create(body.routineId, body.objectPath, userId);
     return aiResult;
+  @UseGuards(AuthGuard)
+  @Get('today')
+  //@ApiOperation({ summary: 'Get routines scheduled for today' })
+  //@ApiOkResponse({ type: [RoutineResponseDto] })
+  async getTodayRoutines(@Req() req): Promise<TodayScreenResponseDto> {
+    const userId = req.user.sub; // Accessing user ID from the token
+    // 1. Get Routines
+    const routines = await this.routinesService.getTodayRoutines(userId);
+
+    // 2. Get Streak (Just read the integer from DB)
+    const user = await this.usersService.findByEmail(req.user.email); // You might need to expose a findOne or getStreak method
+    const streak = user ? user.currentStreak : 0;
+
+    return {
+      streak: streak,
+      routines: routines,
+    };
+
+    //return this.routinesService.getTodayRoutines(userId);
   }
 }

@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
+import { Between, LessThanOrEqual, type Repository } from 'typeorm';
 import { Routine } from './routines.entity';
 import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
@@ -13,6 +13,8 @@ import { RoutineListItemDto } from 'src/common/dto/routines/routine-list-item.dt
 import { Category } from 'src/categories/categories.entity';
 import { RoutineList } from 'src/routine_lists/routine_lists.entity';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
+import { RoutineLog } from 'src/routine_logs/routine_logs.entity';
+import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
 @Injectable()
 export class RoutinesService {
   constructor(
@@ -21,6 +23,9 @@ export class RoutinesService {
 
     @InjectRepository(RoutineList)
     private readonly routineListRepo: Repository<RoutineList>,
+
+    @InjectRepository(RoutineLog)
+    private logRepo: Repository<RoutineLog>,
 
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
@@ -220,5 +225,81 @@ export class RoutinesService {
     const [h, m, s] = routine.end_time.split(':').map(Number);
 
     return new Date(year, month - 1, day, h ?? 0, m ?? 0, s ?? 0, 0);
+  }
+
+  async getTodayRoutines(userId: string): Promise<RoutineResponseDto[]> {
+    const today = new Date();
+    // Normalize today to YYYY-MM-DD string for comparison
+    const todayString = today.toISOString().split('T')[0];
+
+    // 1. Calculate Day Index
+    const jsDay = today.getDay(); // 0=Sun, 1=Mon, 2=Tue...
+    const appDayIndex = jsDay === 0 ? 6 : jsDay - 1; // 0=Mon, ... 6=Sun
+
+    // 2. Fetch User's Routines active today
+    const allRoutines = await this.routineRepo.find({
+      where: {
+        user_id: userId,
+        start_date: LessThanOrEqual(todayString), // Must have started already
+      },
+      relations: ['routine_list'], // To get Category/List name
+    });
+
+    // 3. Filter for TODAY (Daily OR Matching Week Day)
+    const todaysRoutines = allRoutines.filter(routine => {
+      if (routine.frequency_type.toLowerCase() === 'daily') return true;
+      if (routine.frequency_type.toLowerCase() === 'weekly') {
+        // Check if the specific day matches
+        return Number(routine.frequency_detail) === appDayIndex;
+      }
+      return false;
+    });
+
+    // 4. Check for completions (Logs) for TODAY
+    // We create a start and end of the day to check logs
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+    const todaysLogs = await this.logRepo.find({
+      where: {
+        userId: userId,
+        // Check if logDate is within today's range OR exactly matches todayString
+        logDate: Between(startOfDay, endOfDay),
+        isVerified: true,
+      },
+    });
+
+    // Create a Set of completed routine IDs for fast lookup
+    const completedRoutineIds = new Set(todaysLogs.map(log => log.routine.id));
+
+    const result = await Promise.all(
+      todaysRoutines.map(async routine => {
+        // A. Calculate End Time for TODAY
+        const [h, m, s] = routine.end_time.split(':').map(Number);
+        const endAt = new Date(); // Today
+        endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+
+        // B. Calculate Remaining Minutes
+        const now = new Date();
+        const diffMs = endAt.getTime() - now.getTime();
+        const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+
+        // C. Format Label (Reusing your existing helper method)
+        const remainingLabel = this.formatRemainingLabel(remainingMinutes);
+
+        return {
+          id: routine.id,
+          title: routine.routine_name,
+          category: routine.routine_list?.title || 'General',
+          startTime: routine.start_time,
+          endTime: routine.end_time,
+          frequency: routine.frequency_type,
+          isCompleted: completedRoutineIds.has(routine.id),
+          remainingLabel: remainingLabel,
+        };
+      }),
+    );
+
+    return result;
   }
 }
