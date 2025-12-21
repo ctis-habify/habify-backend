@@ -23,7 +23,11 @@ export class RoutineLogsController {
 
   @Post()
   create(@Body() createLogDto: CreateRoutineLogDto, @Req() req) {
-    return this.logsService.create(createLogDto, req.user.sub);
+    return this.logsService.create(
+      createLogDto.routineId,
+      createLogDto.verificationImageUrl,
+      req.user.sub,
+    );
   }
 
   @Get('routine/:routineId')

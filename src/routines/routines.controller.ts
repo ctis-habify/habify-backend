@@ -83,6 +83,7 @@ export class RoutinesController {
   }
 
   //Verify Photo
+  @UseGuards(AuthGuard)
   @Post('verify')
   async verify(@Body() body: { routineId: string; objectPath: string }, @Req() req) {
     const userId = req.user.sub;
@@ -93,6 +94,7 @@ export class RoutinesController {
     const aiResult = await this.ai.verify({ imageUrl: signedReadUrl, text: routineText });
     await this.routineLogs.create(body.routineId, body.objectPath, userId);
     return aiResult;
+  }
   @UseGuards(AuthGuard)
   @Get('today')
   //@ApiOperation({ summary: 'Get routines scheduled for today' })
