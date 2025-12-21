@@ -20,7 +20,7 @@ export class SignedUrlService {
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
     const objectPath = `tmp/verification/${userId}/${Date.now()}-${randomUUID()}-${safeName}`;
 
-    const file = this.gcs.getBucket().file(objectPath);
+    const file = (await this.gcs.getBucket()).file(objectPath);
 
     const [uploadUrl] = await file.getSignedUrl({
       version: 'v4',

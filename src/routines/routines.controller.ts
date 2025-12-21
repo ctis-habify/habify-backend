@@ -15,6 +15,10 @@ import { AuthGuard } from '../auth/auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
+import { AiService } from 'src/ai/ai.service';
+import { GcsService } from 'src/storage/gcs.service';
+import { XpLogsService } from 'src/xp_logs/xp_logs.service';
+import { RoutineLogsService } from 'src/routine_logs/routine_logs.service';
 import { UsersService } from 'src/users/users.service';
 import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
 
@@ -24,6 +28,10 @@ import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-res
 export class RoutinesController {
   constructor(
     private readonly routinesService: RoutinesService,
+    private readonly ai: AiService,
+    private readonly gcs: GcsService,
+    private readonly xp: XpLogsService,
+    private readonly routineLogs: RoutineLogsService,
     private readonly usersService: UsersService,
   ) {}
 
@@ -74,6 +82,17 @@ export class RoutinesController {
     return this.routinesService.getAllRoutinesByList(userId);
   }
 
+  //Verify Photo
+  @Post('verify')
+  async verify(@Body() body: { routineId: string; objectPath: string }, @Req() req) {
+    const userId = req.user.sub;
+    const routineText = (
+      await this.routinesService.getRoutineById(userId, body.routineId)
+    ).routine_name;
+    const signedReadUrl = await this.gcs.getSignedReadUrl(body.objectPath, 600);
+    const aiResult = await this.ai.verify({ imageUrl: signedReadUrl, text: routineText });
+    await this.routineLogs.create(body.routineId, body.objectPath, userId);
+    return aiResult;
   @UseGuards(AuthGuard)
   @Get('today')
   //@ApiOperation({ summary: 'Get routines scheduled for today' })

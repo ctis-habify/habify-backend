@@ -1,28 +1,31 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Storage, Bucket } from '@google-cloud/storage';
+import { Bucket, Storage } from '@google-cloud/storage';
 
 @Injectable()
 export class GcsService {
-  private storage: Storage;
-  private bucket: Bucket;
+  private storage = new Storage({ projectId: process.env.GCP_PROJECT_ID });
+  private bucket = this.storage.bucket(process.env.GCS_BUCKET!);
 
-  constructor(private readonly config: ConfigService) {
-    const projectId = this.config.get<string>('GCS_PROJECT_ID');
-    const keyFilename = this.config.get<string>('GOOGLE_APPLICATION_CREDENTIALS');
-    const bucketName = this.config.get<string>('GCS_BUCKET');
-
-    if (!projectId || !keyFilename || !bucketName) {
-      throw new Error(
-        `Missing GCS env vars. Got: GCS_PROJECT_ID=${projectId}, GOOGLE_APPLICATION_CREDENTIALS=${keyFilename}, GCS_BUCKET=${bucketName}`,
-      );
-    }
-
-    this.storage = new Storage({ projectId, keyFilename });
-    this.bucket = this.storage.bucket(bucketName);
+  async getBucket(): Promise<Bucket> {
+    return this.bucket;
   }
 
-  getBucket() {
-    return this.bucket;
+  async getSignedWriteUrl(objectPath: string, contentType: string, expiresSec = 600) {
+    const [url] = await this.bucket.file(objectPath).getSignedUrl({
+      version: 'v4',
+      action: 'write',
+      expires: Date.now() + expiresSec * 1000,
+      contentType, // PUT'ta aynı olmalı
+    });
+    return url;
+  }
+
+  async getSignedReadUrl(objectPath: string, expiresSec = 600) {
+    const [url] = await this.bucket.file(objectPath).getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + expiresSec * 1000,
+    });
+    return url;
   }
 }

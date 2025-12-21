@@ -41,6 +41,13 @@ export class RoutinesService {
     });
   }
 
+  //Get routine by id
+  async getRoutineById(userId: string, routineId: string): Promise<Routine> {
+    return this.routineRepo.findOne({
+      where: { user_id: userId, id: routineId },
+    });
+  }
+
   // create new routine
   async createRoutine(data: CreateRoutineDto & { userId: string }): Promise<Routine> {
     const routine = this.routineRepo.create({
