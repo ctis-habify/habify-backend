@@ -27,7 +27,12 @@ export class RoutineLogsService {
     private usersService: UsersService,
   ) {}
 
-  async create(routineId: string, verificationImageUrl: string, userId: string) {
+  async create(
+    routineId: string,
+    verificationImageUrl: string,
+    userId: string,
+    options?: { preverified?: boolean },
+  ) {
     const routine = await this.routinesRepository.findOne({ where: { id: routineId } });
     if (!routine) {
       throw new NotFoundException('Routine not found');
@@ -36,27 +41,32 @@ export class RoutineLogsService {
       throw new BadRequestException('Verification image is required');
     }
 
-    const signedReadUrl = await this.gcsService.getSignedReadUrl(
-      verificationImageUrl,
-      600,
-    );
+    let isVerified = !!options?.preverified;
 
-    const prompt = routine.routine_name ?? 'a photo of the required routine activity';
+    if (!isVerified) {
+      const signedReadUrl = await this.gcsService.getSignedReadUrl(
+        verificationImageUrl,
+        600,
+      );
 
-    // AI verification
-    const aiResult = await this.aiService.verify({
-      imageUrl: signedReadUrl,
-      text: prompt,
-    });
+      const prompt = routine.routine_name ?? 'a photo of the required routine activity';
 
-    if (!aiResult.verified) {
-      throw new ForbiddenException('Routine verification failed');
+      //AI VERIFICATION
+      const aiResult = await this.aiService.verify({
+        imageUrl: signedReadUrl,
+        text: prompt,
+      });
+
+      if (!aiResult.verified) {
+        throw new ForbiddenException('Routine verification failed');
+      }
+
+      isVerified = aiResult.verified;
     }
-
     // 1. Create Routine Log
     const newLog = this.logsRepository.create({
       logDate: new Date(),
-      isVerified: true,
+      isVerified: isVerified,
       verificationImageUrl: verificationImageUrl, // GCS objectPath
       routine,
       userId,
