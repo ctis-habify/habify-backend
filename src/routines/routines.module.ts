@@ -15,11 +15,21 @@ import { BullModule } from '@nestjs/bull';
 import * as redisStore from 'cache-manager-redis-store';
 import { RoutineStatusProcessor } from './routine-status.processor';
 import { RoutineLog } from 'src/routine_logs/routine_logs.entity';
+import { AiService } from 'src/ai/ai.service';
+import { AiModule } from 'src/ai/ai.module';
+import { StorageModule } from 'src/storage/storage.module';
+import { XpLogsModule } from 'src/xp_logs/xp_logs.module';
+import { RoutineLogsModule } from 'src/routine_logs/routine_logs.module';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
     AuthModule,
-
+    AiModule,
+    StorageModule,
+    XpLogsModule,
+    RoutineLogsModule,
+    UsersModule,
     // TypeORM repository'ler
     TypeOrmModule.forFeature([Routine, RoutineLog, RoutineList, User, Category]),
 
@@ -41,7 +51,7 @@ import { RoutineLog } from 'src/routine_logs/routine_logs.entity';
     }),
   ],
   controllers: [RoutinesController],
-  providers: [RoutinesService, RoutineStatusProcessor],
+  providers: [RoutinesService, RoutineStatusProcessor, AiService],
   exports: [RoutinesService],
 })
 export class RoutinesModule {}
