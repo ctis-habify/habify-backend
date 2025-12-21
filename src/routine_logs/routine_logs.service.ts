@@ -51,13 +51,9 @@ export class RoutineLogsService {
 
     if (!aiResult.verified) {
       throw new ForbiddenException('Routine verification failed');
-    // 2. Update Streak (Now using the logic above)
-    await this.usersService.checkAndUpdateStreak(userId);
-
-    if (savedLog.isVerified) {
-      await this.xpLogsService.awardXP(userId, 10);
     }
 
+    // 1. Create Routine Log
     const newLog = this.logsRepository.create({
       logDate: new Date(),
       isVerified: true,
@@ -67,9 +63,17 @@ export class RoutineLogsService {
     });
 
     const savedLog = await this.logsRepository.save(newLog);
-    await this.xpLogsService.awardXP(userId, 10);
+
+    // 2. Update Streak (Now using the logic above)
+    await this.usersService.checkAndUpdateStreak(userId);
+
+    if (savedLog.isVerified) {
+      await this.xpLogsService.awardXP(userId, 10);
+    }
+
     return savedLog;
   }
+
   async listLogs(routineId: string, userId: string): Promise<RoutineLog[]> {
     return await this.logsRepository.find({
       where: {
@@ -86,7 +90,10 @@ export class RoutineLogsService {
     startDate: string,
     endDate: string,
   ) {
-    if (!startDate || !endDate) return [];
+    if (!startDate || !endDate) {
+      return [];
+    }
+
     const logs = await this.logsRepository.find({
       where: {
         userId: userId,
