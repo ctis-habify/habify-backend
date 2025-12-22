@@ -12,8 +12,8 @@ import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { VerificationService } from './verification.service';
 import { Verification } from './verification.entity';
-import { SubmitVerificationDto } from './submit-verification.dto';
-import { VerificationRequestDto } from './verification-request.dto';
+import { SubmitVerificationDto } from '../common/dto/verification/submit-verification.dto';
+import { VerificationRequestDto } from '../common/dto/verification/verification-request.dto';
 
 @ApiTags('verification')
 @ApiBearerAuth('access-token')

@@ -9,7 +9,7 @@ import { InjectQueue } from '@nestjs/bull';
 import type { Queue, Job } from 'bull';
 import { Repository } from 'typeorm';
 import { Verification } from './verification.entity';
-import { SubmitVerificationDto } from './submit-verification.dto';
+import { SubmitVerificationDto } from '../common/dto/verification/submit-verification.dto';
 import { Routine } from 'src/routines/routines.entity';
 import { AiService } from 'src/ai/ai.service';
 import { GcsService } from 'src/storage/gcs.service';

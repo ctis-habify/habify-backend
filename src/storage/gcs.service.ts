@@ -29,11 +29,11 @@ export class GcsService {
 
   async getSignedWriteUrl(
     objectPath: string,
-    contentType: string,
+    mimeType: string,
     expiresSec = 600,
   ): Promise<string> {
     const path = this.ensureObjectPath(objectPath);
-    const ct = contentType?.trim();
+    const ct = mimeType?.trim();
     if (!ct) throw new Error('contentType is required');
 
     const expiresMs = Date.now() + Math.max(1, expiresSec) * 1000;
