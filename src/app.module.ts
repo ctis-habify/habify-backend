@@ -24,7 +24,7 @@ import { VerificationModule } from './verification/verification.module';
       url: process.env.DATABASE_URL,
       ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
       autoLoadEntities: true,
-      synchronize: false, //for test purposes only -> true, false in production
+      synchronize: true,
     }),
 
     AuthModule,
