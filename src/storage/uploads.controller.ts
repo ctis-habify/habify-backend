@@ -8,7 +8,7 @@ export class UploadsController {
 
   @UseGuards(AuthGuard)
   @Post('signed-url')
-  async createSignedUrl(@Body() body: { contentType: string; ext?: string }, @Req() req) {
+  async createSignedUrl(@Body() body: { mimeType: string; ext?: string }, @Req() req) {
     const userId = req.user.sub;
     const ext = (body.ext ?? 'jpg').toLowerCase();
     const allowed = new Set(['jpg', 'jpeg', 'png', 'webp']);
@@ -16,7 +16,7 @@ export class UploadsController {
 
     const objectPath = `verifications/${userId}/${Date.now()}.${safeExt}`;
 
-    const signedUrl = await this.gcs.getSignedWriteUrl(objectPath, body.contentType, 600);
+    const signedUrl = await this.gcs.getSignedWriteUrl(objectPath, body.mimeType, 600);
 
     return { signedUrl, objectPath };
   }
