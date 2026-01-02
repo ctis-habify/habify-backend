@@ -15,9 +15,6 @@ export class Routine {
   @Column()
   frequency_type: string; // 'daily' | 'weekly'
 
-  @Column({ nullable: true })
-  frequency_detail: number; // Haftalık ise: 0=Mon,1=Tue...
-
   @Column({ type: 'time', default: '00:00:00' })
   start_time: string;
 
@@ -30,8 +27,23 @@ export class Routine {
   @Column()
   routine_name: string;
 
+  @Column({ default: 0 })
+  streak: number;
+
+  @Column({ name: 'missed_count', default: 0 })
+  missed_count: number;
+
+  @Column({ name: 'last_completed_date', type: 'date', nullable: true })
+  last_completed_date: string;
+
   @Column({ type: 'date' })
   start_date: string;
+
+  @Column({ type: 'time', nullable: true, name: 'reminder_time' })
+  reminder_time: string;
+
+  @Column({ default: true })
+  active: boolean;
 
   @ManyToOne(() => RoutineList, list => list.routines)
   @JoinColumn({ name: 'routine_list_id' })

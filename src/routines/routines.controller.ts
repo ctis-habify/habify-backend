@@ -56,24 +56,6 @@ export class RoutinesController {
     });
   }
 
-  // update routine
-  @UseGuards(AuthGuard)
-  @Patch(':id')
-  async updateRoutine(
-    @Req() req,
-    @Param('id') id: string,
-    @Body() dto: UpdateRoutineDto,
-  ) {
-    return this.routinesService.updateRoutine(req.user.sub, id, dto);
-  }
-
-  // delete routine
-  @UseGuards(AuthGuard)
-  @Delete(':id')
-  async deleteRoutine(@Req() req, @Param('id') id: string) {
-    return this.routinesService.deleteRoutine(req.user.sub, id);
-  }
-
   // list grouped routines
   @UseGuards(AuthGuard)
   @Get('grouped')
@@ -112,7 +94,31 @@ export class RoutinesController {
       streak: streak,
       routines: routines,
     };
-
-    //return this.routinesService.getTodayRoutines(userId);
   }
+
+  // Get routine by id
+  @UseGuards(AuthGuard)
+  @Get(':id')
+  async getRoutineById(@Req() req, @Param('id') id: string) {
+    return this.routinesService.getRoutineById(req.user.sub, id);
+  }
+
+  // update routine
+  @UseGuards(AuthGuard)
+  @Patch(':id')
+  async updateRoutine(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() dto: UpdateRoutineDto,
+  ) {
+    return this.routinesService.updateRoutine(req.user.sub, id, dto);
+  }
+
+  // delete routine
+  @UseGuards(AuthGuard)
+  @Delete(':id')
+  async deleteRoutine(@Req() req, @Param('id') id: string) {
+    return this.routinesService.deleteRoutine(req.user.sub, id);
+  }
+  //return this.routinesService.getTodayRoutines(userId);
 }

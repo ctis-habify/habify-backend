@@ -1,13 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, LessThanOrEqual, type Repository } from 'typeorm';
 import { Routine } from './routines.entity';
 import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
-import { InjectQueue } from '@nestjs/bull';
-import type { Queue } from 'bull';
 import { RoutineListItemDto } from 'src/common/dto/routines/routine-list-item.dto';
 
 import { Category } from 'src/categories/categories.entity';
@@ -29,8 +25,6 @@ export class RoutinesService {
 
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
-    @Inject(CACHE_MANAGER) private readonly cache: Cache,
-    @InjectQueue('routine-status') private readonly routineStatusQueue: Queue,
   ) {}
 
   // List routines by user
@@ -55,7 +49,6 @@ export class RoutinesService {
       routine_list_id: data.routineListId,
       routine_name: data.routineName,
       frequency_type: data.frequencyType,
-      frequency_detail: data.frequencyDetail ?? null,
       start_time: data.startTime ?? '00:00:00',
       end_time: data.endTime ?? '23:59:59',
       start_date: data.startDate,
@@ -67,22 +60,22 @@ export class RoutinesService {
     console.log('CREATE ROUTINE ENTITY >>>', routine);
 
     // Worker için ilk job
-    await this.scheduleStatusJob(saved);
+    // await this.scheduleStatusJob(saved);
 
     return saved;
   }
 
   // update routine
   async updateRoutine(userId: string, routineId: string, dto: UpdateRoutineDto) {
+    console.log('ROUTINE UPDATED: ', dto);
+    console.log('ROUTINE ID: ', routineId);
     const routine = await this.routineRepo.findOne({
       where: { id: routineId, user_id: userId },
     });
     if (!routine) {
       throw new NotFoundException('Routine not found or access denied');
     }
-
     Object.assign(routine, dto);
-
     switch (routine.frequency_type) {
       case 'daily': {
         if (dto.startTime) routine.start_time = dto.startTime;
@@ -96,15 +89,11 @@ export class RoutinesService {
       default:
         break;
     }
-
     if (dto.routineName) {
       routine.routine_name = dto.routineName;
     }
-
     const updated = await this.routineRepo.save(routine);
-
-    await this.scheduleStatusJob(updated);
-
+    // await this.scheduleStatusJob(updated);
     return updated;
   }
 
@@ -141,20 +130,71 @@ export class RoutinesService {
       const routineDtos: RoutineListItemDto[] = [];
 
       for (const routine of routinesSorted) {
-        const cacheKey = `routine-status:${routine.id}`;
+        // Recalculate remaining minutes based on frequency logic
+        const now = new Date();
+        let endAt = new Date();
+        const [h, m, s] = routine.end_time.split(':').map(Number);
 
-        let status = await this.cache.get<{ remainingMinutes: number; isDone: boolean }>(
-          cacheKey,
-        );
+        let isWeeklyPending = false;
 
-        if (!status) {
-          const fallback = this.computeRemainingFallback(routine);
-          status = fallback;
-          await this.cache.set(cacheKey, fallback);
-          await this.scheduleStatusJob(routine);
+        const frequencyLower = routine.frequency_type.toLowerCase();
+
+        if (frequencyLower === 'weekly') {
+          // Weekly: Reset every 7 days from start_date
+          // Parse start_date (YYYY-MM-DD)
+          const [sy, sm, sd] = routine.start_date.split('-').map(Number);
+          const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+
+          // Calculate days passed since start
+          const diffTime = now.getTime() - start.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+          // Current cycle index (0 for first week, 1 for second...)
+          // If diffDays is negative (future start), cycle is 0
+          const currentCycleIndex = diffDays >= 0 ? Math.floor(diffDays / 7) : 0;
+
+          // Calculate which day of the cycle we are in (0-6)
+          const currentCycleDay = diffDays >= 0 ? diffDays % 7 : 0;
+
+          // If we are NOT in the 7th day (index 6), it is pending
+          if (currentCycleDay < 6) {
+            isWeeklyPending = true;
+          }
+
+          // Target day is the 7th day of the current cycle (Start + index*7 + 6 days)
+          // Weekly deadline is always 23:59:59 on the 7th day
+          const daysToAdd = currentCycleIndex * 7 + 6;
+
+          endAt = new Date(start.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+          endAt.setHours(23, 59, 59, 999);
+        } else {
+          // Daily (or others treated as daily): Reset every day after 00:00
+          // Target is Today at end_time
+          endAt = new Date(); // Today
+          endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
         }
 
-        const remainingLabel = this.formatRemainingLabel(status.remainingMinutes);
+        const diffMs = endAt.getTime() - now.getTime();
+        const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+
+        let remainingLabel = '';
+
+        if (frequencyLower === 'weekly' && isWeeklyPending && remainingMinutes > 0) {
+          remainingLabel = 'Pending';
+        } else {
+          if (remainingMinutes > 1440) {
+            // More than 24 hours (Daily case or fail-safe)
+            const remainingDays = Math.ceil(remainingMinutes / 1440);
+            remainingLabel = `${remainingDays} Days`;
+          } else {
+            remainingLabel = this.formatRemainingLabel(remainingMinutes);
+          }
+        }
+        const isDone = routine.is_ai_verified;
+
+        if (remainingMinutes <= 0 && !isDone) {
+          remainingLabel = 'Failed';
+        }
 
         routineDtos.push({
           id: routine.id,
@@ -163,9 +203,9 @@ export class RoutinesService {
           startTime: routine.start_time,
           endTime: routine.end_time,
           startDate: routine.start_date,
-          remainingMinutes: status.remainingMinutes,
+          remainingMinutes: remainingMinutes,
           remainingLabel,
-          isDone: status.isDone,
+          isDone: isDone,
           routineListId: 0,
         });
       }
@@ -182,14 +222,6 @@ export class RoutinesService {
     return result;
   }
 
-  private computeRemainingFallback(routine: Routine) {
-    const endAt = this.buildEndDateTime(routine);
-    const now = new Date();
-    const diffMs = endAt.getTime() - now.getTime();
-    const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
-    return { remainingMinutes, isDone: remainingMinutes <= 0 };
-  }
-
   private formatRemainingLabel(remainingMinutes: number): string {
     if (remainingMinutes <= 0) return 'Done';
 
@@ -200,31 +232,32 @@ export class RoutinesService {
     return `${remainingMinutes} Minutes`;
   }
 
-  private async scheduleStatusJob(routine: Routine) {
-    const endAt = this.buildEndDateTime(routine);
-
-    await this.routineStatusQueue.add(
-      'updateRoutineStatus',
-      {
-        routineId: routine.id,
-        endAt: endAt.toISOString(),
-      },
-      {
-        delay: 0,
-        removeOnComplete: true,
-        removeOnFail: true,
-      },
-    );
-  }
-
-  // start_date (tarih) + end_time (saat) -> Date
+  // Calculate the TARGET end date/time for the current frequency cycle
   private buildEndDateTime(routine: Routine): Date {
-    // start_date kolonu TypeORM'de 'date' ama entity'de string.
-    // 'YYYY-MM-DD' formatında varsayıyorum.
-    const [year, month, day] = routine.start_date.split('-').map(Number);
+    const now = new Date();
     const [h, m, s] = routine.end_time.split(':').map(Number);
 
-    return new Date(year, month - 1, day, h ?? 0, m ?? 0, s ?? 0, 0);
+    // Default to Daily: Today + end_time
+    let endAt = new Date();
+    endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+
+    if (routine.frequency_type.toLowerCase() === 'weekly') {
+      const [sy, sm, sd] = routine.start_date.split('-').map(Number);
+      const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+
+      const diffTime = now.getTime() - start.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      const currentCycleIndex = diffDays >= 0 ? Math.floor(diffDays / 7) : 0;
+
+      // 7th day of current cycle
+      const daysToAdd = currentCycleIndex * 7 + 6;
+
+      endAt = new Date(start.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+      endAt.setHours(23, 59, 59, 999);
+    }
+
+    return endAt;
   }
 
   async getTodayRoutines(userId: string): Promise<RoutineResponseDto[]> {
@@ -233,8 +266,6 @@ export class RoutinesService {
     const todayString = today.toISOString().split('T')[0];
 
     // 1. Calculate Day Index
-    const jsDay = today.getDay(); // 0=Sun, 1=Mon, 2=Tue...
-    const appDayIndex = jsDay === 0 ? 6 : jsDay - 1; // 0=Mon, ... 6=Sun
 
     // 2. Fetch User's Routines active today
     const allRoutines = await this.routineRepo.find({
@@ -249,8 +280,7 @@ export class RoutinesService {
     const todaysRoutines = allRoutines.filter(routine => {
       if (routine.frequency_type.toLowerCase() === 'daily') return true;
       if (routine.frequency_type.toLowerCase() === 'weekly') {
-        // Check if the specific day matches
-        return Number(routine.frequency_detail) === appDayIndex;
+        return true;
       }
       return false;
     });
@@ -284,8 +314,26 @@ export class RoutinesService {
         const diffMs = endAt.getTime() - now.getTime();
         const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
 
-        // C. Format Label (Reusing your existing helper method)
-        const remainingLabel = this.formatRemainingLabel(remainingMinutes);
+        let remainingLabel = '';
+
+        if (routine.frequency_type.toLowerCase() === 'weekly') {
+          const [sy, sm, sd] = routine.start_date.split('-').map(Number);
+          const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+
+          const diffTime = now.getTime() - start.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+          const currentCycleDay = diffDays >= 0 ? diffDays % 7 : 0;
+
+          // If we are NOT in the 7th day (index 6), it is pending
+          if (currentCycleDay < 6) {
+            remainingLabel = 'Pending';
+          }
+        }
+
+        if (!remainingLabel) {
+          remainingLabel = this.formatRemainingLabel(remainingMinutes);
+        }
 
         return {
           id: routine.id,
@@ -296,6 +344,7 @@ export class RoutinesService {
           frequency: routine.frequency_type,
           isCompleted: completedRoutineIds.has(routine.id),
           remainingLabel: remainingLabel,
+          streak: routine.streak,
         };
       }),
     );
