@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, IsInt } from 'class-validator';
+import { IsBoolean, IsString, IsInt } from 'class-validator';
 
 export class CreateRoutineDto {
   @ApiProperty({
@@ -19,14 +19,6 @@ export class CreateRoutineDto {
   })
   @IsString()
   frequencyType: string;
-
-  @ApiProperty({
-    example: 2,
-    required: false,
-  })
-  @IsOptional()
-  @IsInt()
-  frequencyDetail?: number;
 
   @ApiProperty({
     example: '08:00:00',

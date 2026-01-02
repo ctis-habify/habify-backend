@@ -27,4 +27,7 @@ export class RoutineResponseDto {
 
   @ApiProperty({ example: '2 Hours', description: 'Formatted remaining time label' })
   remainingLabel: string;
+
+  @ApiProperty({ example: 5, description: 'Current streak for this routine' })
+  streak: number;
 }

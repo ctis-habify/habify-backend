@@ -13,6 +13,7 @@ import { RoutineListsModule } from './routine_lists/routine_lists.module';
 import { XpLogsModule } from './xp_logs/xp_logs.module';
 import { StorageModule } from './storage/storage.module';
 import { VerificationModule } from './verification/verification.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { VerificationModule } from './verification/verification.module';
     XpLogsModule,
     StorageModule,
     VerificationModule,
+    SchedulerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
