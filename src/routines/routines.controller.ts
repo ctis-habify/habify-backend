@@ -86,12 +86,10 @@ export class RoutinesController {
     // 1. Get Routines
     const routines = await this.routinesService.getTodayRoutines(userId);
 
-    // 2. Get Streak (Just read the integer from DB)
-    const user = await this.usersService.findByEmail(req.user.email); // You might need to expose a findOne or getStreak method
-    const streak = user ? user.currentStreak : 0;
+    // 2. Get Streak (REMOVED)
+    // const streak = ...
 
     return {
-      streak: streak,
       routines: routines,
     };
   }
