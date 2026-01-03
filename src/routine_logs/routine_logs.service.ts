@@ -75,7 +75,8 @@ export class RoutineLogsService {
     const savedLog = await this.logsRepository.save(newLog);
 
     // 2. Update Streak (Now using the logic above)
-    await this.usersService.checkAndUpdateStreak(userId);
+    // Streak update logic removed
+    // await this.usersService.checkAndUpdateStreak(userId);
 
     if (savedLog.isVerified) {
       await this.xpLogsService.awardXP(userId, 10);

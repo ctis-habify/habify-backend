@@ -12,6 +12,7 @@ export class UsersController {
   @UseGuards(AuthGuard)
   @Get('me')
   async getMe(@Req() req) {
-    return req.user;
+    const userId = req.user.sub;
+    return this.usersService.findById(userId);
   }
 }

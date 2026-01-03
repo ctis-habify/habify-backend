@@ -44,9 +44,6 @@ export class User {
   @Column({ name: 'fcm_token', nullable: true })
   fcmToken: string;
 
-  @Column({ name: 'current_streak', type: 'int', default: 0 })
-  currentStreak: number;
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

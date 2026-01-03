@@ -76,10 +76,11 @@ export class RoutinesService {
       throw new NotFoundException('Routine not found or access denied');
     }
     Object.assign(routine, dto);
+    if (dto.startTime) routine.start_time = dto.startTime;
+    if (dto.endTime) routine.end_time = dto.endTime;
+
     switch (routine.frequency_type) {
       case 'daily': {
-        if (dto.startTime) routine.start_time = dto.startTime;
-        if (dto.endTime) routine.end_time = dto.endTime;
         break;
       }
       case 'weekly': {
@@ -230,34 +231,6 @@ export class RoutinesService {
       return `${hours} Hours`;
     }
     return `${remainingMinutes} Minutes`;
-  }
-
-  // Calculate the TARGET end date/time for the current frequency cycle
-  private buildEndDateTime(routine: Routine): Date {
-    const now = new Date();
-    const [h, m, s] = routine.end_time.split(':').map(Number);
-
-    // Default to Daily: Today + end_time
-    let endAt = new Date();
-    endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
-
-    if (routine.frequency_type.toLowerCase() === 'weekly') {
-      const [sy, sm, sd] = routine.start_date.split('-').map(Number);
-      const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-
-      const diffTime = now.getTime() - start.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-      const currentCycleIndex = diffDays >= 0 ? Math.floor(diffDays / 7) : 0;
-
-      // 7th day of current cycle
-      const daysToAdd = currentCycleIndex * 7 + 6;
-
-      endAt = new Date(start.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-      endAt.setHours(23, 59, 59, 999);
-    }
-
-    return endAt;
   }
 
   async getTodayRoutines(userId: string): Promise<RoutineResponseDto[]> {
