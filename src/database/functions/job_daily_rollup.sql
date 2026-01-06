@@ -48,7 +48,8 @@ begin
       )
       then p_day
       else r.last_completed_date
-    end
+    end,
+    is_ai_verified = false
     -- updated_at removed as it does not exist in standard entity shown, or add if needed
   where r.frequency_type = 'daily' -- frequency -> frequency_type
     -- active check? Entity doesn't show 'active' column but maybe we assume all in table are active or add check if field exists.

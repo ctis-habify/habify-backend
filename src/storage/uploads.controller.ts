@@ -1,6 +1,7 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '../auth/auth.guard'; // sizdeki guard neyse
+import { AuthGuard } from '../auth/auth.guard';
 import { GcsService } from './gcs.service';
+import { CreateSignedUrlDto } from '../common/dto/storage/create-signed-url.dto';
 
 @Controller('uploads')
 export class UploadsController {
@@ -8,15 +9,15 @@ export class UploadsController {
 
   @UseGuards(AuthGuard)
   @Post('signed-url')
-  async createSignedUrl(@Body() body: { mimeType: string; ext?: string }, @Req() req) {
+  async createSignedUrl(@Body() dto: CreateSignedUrlDto, @Req() req) {
     const userId = req.user.sub;
-    const ext = (body.ext ?? 'jpg').toLowerCase();
+    const ext = (dto.ext ?? 'jpg').toLowerCase();
     const allowed = new Set(['jpg', 'jpeg', 'png', 'webp']);
     const safeExt = allowed.has(ext) ? ext : 'jpg';
 
     const objectPath = `verifications/${userId}/${Date.now()}.${safeExt}`;
 
-    const signedUrl = await this.gcs.getSignedWriteUrl(objectPath, body.mimeType, 600);
+    const signedUrl = await this.gcs.getSignedWriteUrl(objectPath, dto.mimeType, 600);
 
     return { signedUrl, objectPath };
   }

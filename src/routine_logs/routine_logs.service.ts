@@ -74,12 +74,39 @@ export class RoutineLogsService {
 
     const savedLog = await this.logsRepository.save(newLog);
 
-    // 2. Update Streak (Now using the logic above)
-    // Streak update logic removed
-    // await this.usersService.checkAndUpdateStreak(userId);
-
     if (savedLog.isVerified) {
+      // 2. Update Routine status for immediate feedback
+      const today = new Date().toISOString().split('T')[0];
+
+      if (routine.last_completed_date !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        if (routine.last_completed_date === yesterdayStr) {
+          console.log(
+            `Incrementing streak for Routine ${routine.id}: ${routine.streak} -> ${routine.streak + 1}`,
+          );
+          routine.streak += 1;
+        } else {
+          console.log(`Starting/Resetting streak for Routine ${routine.id} to 1`);
+          routine.streak = 1;
+        }
+      }
+
+      console.log(
+        `Updating Routine ${routine.id}: is_ai_verified ${routine.is_ai_verified} -> true`,
+      );
+      routine.is_ai_verified = true;
+      routine.last_completed_date = today;
+      await this.routinesRepository.save(routine);
+
+      // 3. Award XP
+      const userBefore = await this.usersService.findById(userId);
+      console.log(`Awarding XP to User ${userId}: totalXp before ${userBefore?.totalXp}`);
       await this.xpLogsService.awardXP(userId, 10);
+      const userAfter = await this.usersService.findById(userId);
+      console.log(`Awarding XP to User ${userId}: totalXp after ${userAfter?.totalXp}`);
     }
 
     return savedLog;

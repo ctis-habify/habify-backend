@@ -270,6 +270,7 @@ export class RoutinesService {
         logDate: Between(startOfDay, endOfDay),
         isVerified: true,
       },
+      relations: ['routine'],
     });
 
     // Create a Set of completed routine IDs for fast lookup
