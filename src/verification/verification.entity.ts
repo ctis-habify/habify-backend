@@ -16,7 +16,7 @@ export class Verification {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Routine)
+  @ManyToOne(() => Routine, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'routine_id' })
   routine: Routine;
 

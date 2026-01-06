@@ -22,7 +22,7 @@ export class RoutineLog {
   @Column({ name: 'verification_image_url', nullable: true })
   verificationImageUrl: string;
 
-  @ManyToOne(() => Routine)
+  @ManyToOne(() => Routine, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'routine_id' })
   routine: Routine;
 

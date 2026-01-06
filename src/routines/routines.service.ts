@@ -67,34 +67,32 @@ export class RoutinesService {
 
   // update routine
   async updateRoutine(userId: string, routineId: string, dto: UpdateRoutineDto) {
-    console.log('ROUTINE UPDATED: ', dto);
-    console.log('ROUTINE ID: ', routineId);
     const routine = await this.routineRepo.findOne({
       where: { id: routineId, user_id: userId },
     });
     if (!routine) {
       throw new NotFoundException('Routine not found or access denied');
     }
-    Object.assign(routine, dto);
-    if (dto.startTime) routine.start_time = dto.startTime;
-    if (dto.endTime) routine.end_time = dto.endTime;
 
-    switch (routine.frequency_type) {
-      case 'daily': {
-        break;
-      }
-      case 'weekly': {
-        if (dto.startDate) routine.start_date = dto.startDate;
-        break;
-      }
-      default:
-        break;
+    const oldFreq = routine.frequency_type?.toLowerCase();
+    const newFreq = dto.frequencyType?.toLowerCase();
+
+    // Mapping manual fields
+    if (dto.routineName) routine.routine_name = dto.routineName;
+    if (dto.frequencyType) routine.frequency_type = dto.frequencyType;
+    if (dto.startDate) routine.start_date = dto.startDate;
+
+    // Spesifik kural: daily -> weekly geçişinde zamanları sıfırla
+    if (oldFreq === 'daily' && newFreq === 'weekly') {
+      routine.start_time = '00:00:00';
+      routine.end_time = '23:59:59';
+    } else {
+      // Eğer geçiş yoksa ve yeni zamanlar gelmişse onları uygula
+      if (dto.startTime) routine.start_time = dto.startTime;
+      if (dto.endTime) routine.end_time = dto.endTime;
     }
-    if (dto.routineName) {
-      routine.routine_name = dto.routineName;
-    }
+
     const updated = await this.routineRepo.save(routine);
-    // await this.scheduleStatusJob(updated);
     return updated;
   }
 
