@@ -2,8 +2,6 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
 import { Subject } from 'rxjs';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {
@@ -13,36 +11,9 @@ export class SchedulerService implements OnModuleInit {
   constructor(private readonly dataSource: DataSource) {}
 
   async onModuleInit() {
-    await this.initializeDbFunctions();
-  }
-
-  private async initializeDbFunctions() {
-    this.logger.log('Initializing/Updating database functions...');
-    try {
-      // In development/watch mode, files are in src/
-      const functionsDir = path.join(process.cwd(), 'src', 'database', 'functions');
-
-      const dailyRollupPath = path.join(functionsDir, 'job_daily_rollup.sql');
-      const reminderScanPath = path.join(functionsDir, 'job_reminder_scan.sql');
-
-      if (fs.existsSync(dailyRollupPath)) {
-        const sql = fs.readFileSync(dailyRollupPath, 'utf8');
-        await this.dataSource.query(sql);
-        this.logger.log('job_daily_rollup function created/updated.');
-      } else {
-        this.logger.warn(`File not found: ${dailyRollupPath}`);
-      }
-
-      if (fs.existsSync(reminderScanPath)) {
-        const sql = fs.readFileSync(reminderScanPath, 'utf8');
-        await this.dataSource.query(sql);
-        this.logger.log('job_reminder_scan function created/updated.');
-      } else {
-        this.logger.warn(`File not found: ${reminderScanPath}`);
-      }
-    } catch (error) {
-      this.logger.error('Error initializing database functions', error);
-    }
+    this.logger.log(
+      'Scheduler initialised. Database functions should be managed via Supabase.',
+    );
   }
 
   getEventsObservable() {
@@ -81,5 +52,11 @@ export class SchedulerService implements OnModuleInit {
     } catch (error) {
       this.logger.error('Error running job_reminder_scan', error);
     }
+  }
+
+  async debugGetRoutines() {
+    return this.dataSource.query(
+      'SELECT id, routine_name, frequency_type, active, is_ai_verified FROM routines',
+    );
   }
 }

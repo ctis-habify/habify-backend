@@ -1,4 +1,4 @@
-import { Controller, Post, Sse, MessageEvent } from '@nestjs/common';
+import { Controller, Post, Get, Sse, MessageEvent } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SchedulerService } from './scheduler.service.js';
 import { Observable, map } from 'rxjs';
@@ -28,5 +28,11 @@ export class SchedulerController {
     return this.schedulerService
       .getEventsObservable()
       .pipe(map(data => ({ data }) as MessageEvent));
+  }
+
+  @Get('debug-routines')
+  @ApiOperation({ summary: 'Debug: Get first 10 routines' })
+  async getDebugRoutines() {
+    return this.schedulerService.debugGetRoutines();
   }
 }

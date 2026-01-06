@@ -1,14 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category } from './categories.entity';
 import { CreateCategoryDto } from '../common/dto/categories/create-category.dto';
+import { RoutineList } from 'src/routine_lists/routine_lists.entity';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private categoriesRepository: Repository<Category>,
+    @InjectRepository(RoutineList)
+    private routineListRepository: Repository<RoutineList>,
   ) {}
 
   async create(createCategoryDto: CreateCategoryDto) {
@@ -20,5 +23,27 @@ export class CategoriesService {
     return await this.categoriesRepository.find({
       order: { id: 'ASC' },
     });
+  }
+
+  async remove(id: number) {
+    // Check if category exists
+    const category = await this.categoriesRepository.findOne({ where: { id } });
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+
+    // Check if it's used in any RoutineList
+    const listCount = await this.routineListRepository.count({
+      where: { categoryId: id },
+    });
+
+    if (listCount > 0) {
+      throw new ConflictException(
+        'Cannot delete category: It is currently associated with one or more routine lists.',
+      );
+    }
+
+    await this.categoriesRepository.delete(id);
+    return { message: 'Category deleted successfully' };
   }
 }
