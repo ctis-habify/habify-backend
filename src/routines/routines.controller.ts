@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  NotFoundException,
   Patch,
   Post,
   Req,
@@ -17,10 +18,16 @@ import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
 import { AiService } from 'src/ai/ai.service';
 import { GcsService } from 'src/storage/gcs.service';
-import { XpLogsService } from 'src/xp_logs/xp_logs.service';
-import { RoutineLogsService } from 'src/routine_logs/routine_logs.service';
+import { XpLogsService } from 'src/xp-logs/xp-logs.service';
+import { RoutineLogsService } from 'src/routine-logs/routine-logs.service';
 import { UsersService } from 'src/users/users.service';
 import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
+import { VerifyResult } from 'src/ai/ai.service';
+
+import type { Request } from 'express';
+import { User } from 'src/users/users.entity';
+import { Routine } from './routines.entity';
+import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
 
 @ApiTags('routines')
 @ApiBearerAuth('access-token')
@@ -37,16 +44,16 @@ export class RoutinesController {
 
   @UseGuards(AuthGuard)
   @Get('me')
-  async getMyRoutines(@Req() req) {
-    const userId = req.user.sub;
+  async getMyRoutines(@Req() req: Request): Promise<Routine[]> {
+    const userId = (req.user as any).id;
     return this.routinesService.getUserRoutines(userId);
   }
 
   // Create new routine
   @UseGuards(AuthGuard)
   @Post()
-  async createRoutine(@Req() req, @Body() dto: CreateRoutineDto) {
-    const userId = req.user?.sub;
+  async createRoutine(@Req() req: Request, @Body() dto: CreateRoutineDto): Promise<Routine> {
+    const userId = (req.user as any).id;
 
     console.log('USER ID:', userId);
     console.log('ROUTINE LIST ID: ', dto.routineListId);
@@ -59,35 +66,34 @@ export class RoutinesController {
   // list grouped routines
   @UseGuards(AuthGuard)
   @Get('grouped')
-  async getMyRoutinesListed(@Req() req): Promise<RoutineListWithRoutinesDto[]> {
-    const userId = req.user.sub;
+  async getMyRoutinesListed(@Req() req: Request): Promise<RoutineListWithRoutinesDto[]> {
+    const userId = (req.user as any).id;
     return this.routinesService.getAllRoutinesByList(userId);
   }
 
   //Verify Photo
   @UseGuards(AuthGuard)
   @Post('verify')
-  async verify(@Body() body: { routineId: string; objectPath: string }, @Req() req) {
-    const userId = req.user.sub;
-    const routineText = (
-      await this.routinesService.getRoutineById(userId, body.routineId)
-    ).routine_name;
+  async verify(
+    @Body() body: { routineId: string; objectPath: string },
+    @Req() req: Request,
+  ): Promise<VerifyResult> {
+    const userId = (req.user as any).id;
+    const routine = await this.routinesService.getRoutineById(userId, body.routineId);
+    if (!routine) throw new NotFoundException('Routine not found');
+    const routineText = routine.routineName;
     const signedReadUrl = await this.gcs.getSignedReadUrl(body.objectPath, 600);
     const aiResult = await this.ai.verify({ imageUrl: signedReadUrl, text: routineText });
     await this.routineLogs.create(body.routineId, body.objectPath, userId);
     return aiResult;
   }
+
   @UseGuards(AuthGuard)
   @Get('today')
-  //@ApiOperation({ summary: 'Get routines scheduled for today' })
-  //@ApiOkResponse({ type: [RoutineResponseDto] })
-  async getTodayRoutines(@Req() req): Promise<TodayScreenResponseDto> {
-    const userId = req.user.sub; // Accessing user ID from the token
+  async getTodayRoutines(@Req() req: Request): Promise<TodayScreenResponseDto> {
+    const userId = (req.user as any).id; // Accessing user ID from the token
     // 1. Get Routines
     const routines = await this.routinesService.getTodayRoutines(userId);
-
-    // 2. Get Streak (REMOVED)
-    // const streak = ...
 
     return {
       routines: routines,
@@ -97,26 +103,28 @@ export class RoutinesController {
   // Get routine by id
   @UseGuards(AuthGuard)
   @Get(':id')
-  async getRoutineById(@Req() req, @Param('id') id: string) {
-    return this.routinesService.getRoutineById(req.user.sub, id);
+  async getRoutineById(@Req() req: Request, @Param('id') id: string): Promise<Routine | null> {
+    const userId = (req.user as any).id;
+    return this.routinesService.getRoutineById(userId, id);
   }
 
   // update routine
   @UseGuards(AuthGuard)
   @Patch(':id')
   async updateRoutine(
-    @Req() req,
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: UpdateRoutineDto,
-  ) {
-    return this.routinesService.updateRoutine(req.user.sub, id, dto);
+  ): Promise<Routine> {
+    const userId = (req.user as any).id;
+    return this.routinesService.updateRoutine(userId, id, dto);
   }
 
   // delete routine
   @UseGuards(AuthGuard)
   @Delete(':id')
-  async deleteRoutine(@Req() req, @Param('id') id: string) {
-    return this.routinesService.deleteRoutine(req.user.sub, id);
+  async deleteRoutine(@Req() req: Request, @Param('id') id: string): Promise<{ message: string }> {
+    const userId = (req.user as any).id;
+    return this.routinesService.deleteRoutine(userId, id);
   }
-  //return this.routinesService.getTodayRoutines(userId);
 }

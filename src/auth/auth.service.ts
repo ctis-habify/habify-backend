@@ -13,7 +13,7 @@ export class AuthService {
   ) {}
 
   // Handles user registration
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto): Promise<{ user: Partial<User>; accessToken: string }> {
     const user = await this.usersService.createUser(dto);
     const token = await this.generateToken(user);
     return { user: this.sanitizeUser(user), accessToken: token };
@@ -35,7 +35,10 @@ export class AuthService {
   }
 
   // Login flow: validate -> update login time -> return user + token
-  async login(email: string, password: string) {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<{ user: Partial<User>; accessToken: string }> {
     const user = await this.validateUser(email, password);
 
     await this.usersService.updateLastLogin(user); // update last_login_at
@@ -47,6 +50,7 @@ export class AuthService {
   // Creates a signed JWT token for the given user
   private async generateToken(user: User): Promise<string> {
     const payload = {
+      id: user.id,
       sub: user.id, // JWT "subject"
       email: user.email,
       name: user.name,
@@ -56,7 +60,7 @@ export class AuthService {
   }
 
   // Removes sensitive fields before sending user to client
-  private sanitizeUser(user: User) {
+  private sanitizeUser(user: User): Partial<User> {
     const { passwordHash: _passwordHash, ...rest } = user;
     return rest;
   }

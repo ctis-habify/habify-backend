@@ -1,4 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+jest.mock('@xenova/transformers', () => {
+  return {
+    pipeline: jest.fn(),
+    env: { allowLocalModels: false },
+  };
+});
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bull';
 
@@ -8,7 +14,7 @@ import { Routine } from '../routines/routines.entity';
 
 import { AiService } from '../ai/ai.service';
 import { GcsService } from '../storage/gcs.service';
-import { RoutineLogsService } from '../routine_logs/routine_logs.service';
+import { RoutineLogsService } from '../routine-logs/routine-logs.service';
 
 describe('VerificationService (unit)', () => {
   let service: VerificationService;
@@ -66,7 +72,7 @@ describe('VerificationService (unit)', () => {
       verificationImageUrl: 'verifications/user-1/test.jpg',
       routine: {
         id: 1,
-        routine_name: 'Drink water',
+        routineName: 'Drink water',
       },
     });
 
@@ -77,7 +83,7 @@ describe('VerificationService (unit)', () => {
       score: 0.42,
     });
 
-    verificationRepoMock.save.mockImplementation(async x => x);
+    verificationRepoMock.save.mockImplementation(async (x) => x);
 
     await service.process({
       data: { verificationId: 'ver-1' },

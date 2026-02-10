@@ -1,20 +1,23 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { XpLog } from './xp_logs.entity';
-import { CreateXpLogDto } from '../common/dto/xp_logs/create-xp-log.dto';
+import { XpLog } from './xp-logs.entity';
+import { CreateXpLogDto } from '../common/dto/xp-logs/create-xp-log.dto';
 import { User } from '../users/users.entity';
 
 @Injectable()
 export class XpLogsService {
   constructor(
     @InjectRepository(XpLog)
-    private xpLogRepository: Repository<XpLog>,
+    private readonly xpLogRepository: Repository<XpLog>,
     @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(createDto: CreateXpLogDto, userId: string) {
+  async create(
+    createDto: CreateXpLogDto,
+    userId: string,
+  ): Promise<{ log: XpLog; updatedTotalXp: number }> {
     const { amount, eventType } = createDto;
 
     const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -39,9 +42,9 @@ export class XpLogsService {
     };
   }
 
-  async awardXP(userId: string, amount: number = 10) {
+  async awardXP(userId: string, amount: number = 10): Promise<XpLog | undefined> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) return;
+    if (!user) return undefined;
 
     const newLog = this.xpLogRepository.create({
       amount: amount,
@@ -62,7 +65,7 @@ export class XpLogsService {
     return user ? user.totalXp || 0 : 0;
   }
 
-  async findAll(userId: string) {
+  async findAll(userId: string): Promise<XpLog[]> {
     return await this.xpLogRepository.find({
       where: { userId },
       order: { timestamp: 'DESC' },

@@ -2,17 +2,20 @@ import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { User } from './users.entity';
 
 @ApiTags('users')
 @ApiBearerAuth('access-token')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
   // Returns the logged-in user's data
   @UseGuards(AuthGuard)
   @Get('me')
-  async getMe(@Req() req) {
-    const userId = req.user.sub;
+  async getMe(@Req() req: Request): Promise<User | null> {
+    const userId = (req.user as any).id;
     return this.usersService.findById(userId);
   }
 }

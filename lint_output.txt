@@ -1,0 +1,87 @@
+
+> habify-backend@1.0.0 lint
+> eslint "src/**/*.{ts,js}"
+
+
+/Users/suedaakca/Documents/GitHub/habify-backend/src/ai/ai.service.ts
+   16:18  error    Interface name `IVerifyPayload` must not match the RegExp: /^I[A-Z]/u                             @typescript-eslint/naming-convention
+   21:18  error    Interface name `IVerifyResult` must not match the RegExp: /^I[A-Z]/u                              @typescript-eslint/naming-convention
+   34:22  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+   35:24  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+   36:22  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+   46:19  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+   77:9   error    Object Literal Property name `return_tensors` must match one of the following formats: camelCase  @typescript-eslint/naming-convention
+   80:15  error    Variable name `image_embeds` must match one of the following formats: camelCase, UPPER_CASE       @typescript-eslint/naming-convention
+   81:15  error    Variable name `text_embeds` must match one of the following formats: camelCase, UPPER_CASE        @typescript-eslint/naming-convention
+   90:19  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+  108:16  error    Type Property name `pixel_values` must match one of the following formats: camelCase              @typescript-eslint/naming-convention
+  138:14  error    Object Literal Property name `pixel_values` must match one of the following formats: camelCase    @typescript-eslint/naming-convention
+
+/Users/suedaakca/Documents/GitHub/habify-backend/src/routine_lists/routine_lists.service.ts
+  82:16  error  Object Literal Property name `routine_list_id` must match one of the following formats: camelCase  @typescript-eslint/naming-convention
+
+/Users/suedaakca/Documents/GitHub/habify-backend/src/routine_logs/routine_logs.service.ts
+   87:11  warning  Unexpected console statement  no-console
+   92:11  warning  Unexpected console statement  no-console
+   97:7   warning  Unexpected console statement  no-console
+  106:7   warning  Unexpected console statement  no-console
+  109:7   warning  Unexpected console statement  no-console
+
+/Users/suedaakca/Documents/GitHub/habify-backend/src/routines/due-reminders.entity.ts
+  16:3  error  Class Property name `user_id` must match one of the following formats: camelCase        @typescript-eslint/naming-convention
+  19:3  error  Class Property name `routine_id` must match one of the following formats: camelCase     @typescript-eslint/naming-convention
+  22:3  error  Class Property name `scheduled_for` must match one of the following formats: camelCase  @typescript-eslint/naming-convention
+  25:3  error  Class Property name `created_at` must match one of the following formats: camelCase     @typescript-eslint/naming-convention
+  28:3  error  Class Property name `sent_at` must match one of the following formats: camelCase        @typescript-eslint/naming-convention
+
+/Users/suedaakca/Documents/GitHub/habify-backend/src/routines/routines.controller.ts
+  51:5  warning  Unexpected console statement  no-console
+  52:5  warning  Unexpected console statement  no-console
+
+/Users/suedaakca/Documents/GitHub/habify-backend/src/routines/routines.entity.ts
+  10:3  error  Class Property name `user_id` must match one of the following formats: camelCase              @typescript-eslint/naming-convention
+  13:3  error  Class Property name `routine_list_id` must match one of the following formats: camelCase      @typescript-eslint/naming-convention
+  16:3  error  Class Property name `frequency_type` must match one of the following formats: camelCase       @typescript-eslint/naming-convention
+  19:3  error  Class Property name `start_time` must match one of the following formats: camelCase           @typescript-eslint/naming-convention
+  22:3  error  Class Property name `end_time` must match one of the following formats: camelCase             @typescript-eslint/naming-convention
+  25:3  error  Class Property name `is_ai_verified` must match one of the following formats: camelCase       @typescript-eslint/naming-convention
+  28:3  error  Class Property name `routine_name` must match one of the following formats: camelCase         @typescript-eslint/naming-convention
+  34:3  error  Class Property name `missed_count` must match one of the following formats: camelCase         @typescript-eslint/naming-convention
+  37:3  error  Class Property name `last_completed_date` must match one of the following formats: camelCase  @typescript-eslint/naming-convention
+  40:3  error  Class Property name `start_date` must match one of the following formats: camelCase           @typescript-eslint/naming-convention
+  43:3  error  Class Property name `reminder_time` must match one of the following formats: camelCase        @typescript-eslint/naming-convention
+  50:3  error  Class Property name `routine_list` must match one of the following formats: camelCase         @typescript-eslint/naming-convention
+
+/Users/suedaakca/Documents/GitHub/habify-backend/src/routines/routines.service.ts
+   33:16  error    Object Literal Property name `user_id` must match one of the following formats: camelCase          @typescript-eslint/naming-convention
+   34:16  error    Object Literal Property name `start_time` must match one of the following formats: camelCase       @typescript-eslint/naming-convention
+   41:16  error    Object Literal Property name `user_id` must match one of the following formats: camelCase          @typescript-eslint/naming-convention
+   48:7   error    Object Literal Property name `user_id` must match one of the following formats: camelCase          @typescript-eslint/naming-convention
+   49:7   error    Object Literal Property name `routine_list_id` must match one of the following formats: camelCase  @typescript-eslint/naming-convention
+   50:7   error    Object Literal Property name `routine_name` must match one of the following formats: camelCase     @typescript-eslint/naming-convention
+   51:7   error    Object Literal Property name `frequency_type` must match one of the following formats: camelCase   @typescript-eslint/naming-convention
+   52:7   error    Object Literal Property name `start_time` must match one of the following formats: camelCase       @typescript-eslint/naming-convention
+   53:7   error    Object Literal Property name `end_time` must match one of the following formats: camelCase         @typescript-eslint/naming-convention
+   54:7   error    Object Literal Property name `start_date` must match one of the following formats: camelCase       @typescript-eslint/naming-convention
+   55:7   error    Object Literal Property name `is_ai_verified` must match one of the following formats: camelCase   @typescript-eslint/naming-convention
+   59:5   warning  Unexpected console statement                                                                       no-console
+   60:5   warning  Unexpected console statement                                                                       no-console
+   71:31  error    Object Literal Property name `user_id` must match one of the following formats: camelCase          @typescript-eslint/naming-convention
+  102:9   error    Object Literal Property name `user_id` must match one of the following formats: camelCase          @typescript-eslint/naming-convention
+  106:16  warning  Unexpected console statement                                                                       no-console
+  111:51  error    Object Literal Property name `user_id` must match one of the following formats: camelCase          @typescript-eslint/naming-convention
+  244:9   error    Object Literal Property name `user_id` must match one of the following formats: camelCase          @typescript-eslint/naming-convention
+  245:9   error    Object Literal Property name `start_date` must match one of the following formats: camelCase       @typescript-eslint/naming-convention
+
+/Users/suedaakca/Documents/GitHub/habify-backend/src/users/users.entity.ts
+  10:3  error  Enum Member name `FEMALE` must match one of the following formats: camelCase  @typescript-eslint/naming-convention
+  11:3  error  Enum Member name `MALE` must match one of the following formats: camelCase    @typescript-eslint/naming-convention
+  12:3  error  Enum Member name `OTHER` must match one of the following formats: camelCase   @typescript-eslint/naming-convention
+  13:3  error  Enum Member name `NA` must match one of the following formats: camelCase      @typescript-eslint/naming-convention
+
+/Users/suedaakca/Documents/GitHub/habify-backend/src/verification/verification.service.spec.ts
+  69:9   error    Object Literal Property name `routine_name` must match one of the following formats: camelCase  @typescript-eslint/naming-convention
+  86:10  warning  Unexpected any. Specify a different type                                                        @typescript-eslint/no-explicit-any
+
+✖ 62 problems (46 errors, 16 warnings)
+

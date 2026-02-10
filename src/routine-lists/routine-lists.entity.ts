@@ -36,6 +36,6 @@ export class RoutineList {
   @Column({ name: 'category_id' })
   categoryId: number;
 
-  @OneToMany(() => Routine, routine => routine.routine_list)
+  @OneToMany(() => Routine, (routine) => routine.routineList)
   routines: Routine[];
 }

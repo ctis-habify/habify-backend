@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RoutineLog } from './routine_logs.entity';
+import { RoutineLog } from './routine-logs.entity';
 import { Routine } from '../routines/routines.entity';
-import { XpLogsService } from '../xp_logs/xp_logs.service';
+import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { GcsService } from 'src/storage/gcs.service';
 import { AiService } from 'src/ai/ai.service';
 import { UsersService } from 'src/users/users.service';
@@ -18,13 +18,13 @@ import { UsersService } from 'src/users/users.service';
 export class RoutineLogsService {
   constructor(
     @InjectRepository(RoutineLog)
-    private logsRepository: Repository<RoutineLog>,
+    private readonly logsRepository: Repository<RoutineLog>,
     @InjectRepository(Routine)
-    private routinesRepository: Repository<Routine>,
-    private xpLogsService: XpLogsService,
-    private gcsService: GcsService,
-    private aiService: AiService,
-    private usersService: UsersService,
+    private readonly routinesRepository: Repository<Routine>,
+    private readonly xpLogsService: XpLogsService,
+    private readonly gcsService: GcsService,
+    private readonly aiService: AiService,
+    private readonly usersService: UsersService,
   ) {}
 
   async create(
@@ -32,7 +32,7 @@ export class RoutineLogsService {
     verificationImageUrl: string,
     userId: string,
     options?: { preverified?: boolean },
-  ) {
+  ): Promise<RoutineLog> {
     const routine = await this.routinesRepository.findOne({ where: { id: routineId } });
     if (!routine) {
       throw new NotFoundException('Routine not found');
@@ -44,12 +44,9 @@ export class RoutineLogsService {
     let isVerified = !!options?.preverified;
 
     if (!isVerified) {
-      const signedReadUrl = await this.gcsService.getSignedReadUrl(
-        verificationImageUrl,
-        600,
-      );
+      const signedReadUrl = await this.gcsService.getSignedReadUrl(verificationImageUrl, 600);
 
-      const prompt = routine.routine_name ?? 'a photo of the required routine activity';
+      const prompt = routine.routineName ?? 'a photo of the required routine activity';
 
       //AI VERIFICATION
       const aiResult = await this.aiService.verify({
@@ -78,12 +75,12 @@ export class RoutineLogsService {
       // 2. Update Routine status for immediate feedback
       const today = new Date().toISOString().split('T')[0];
 
-      if (routine.last_completed_date !== today) {
+      if (routine.lastCompletedDate !== today) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-        if (routine.last_completed_date === yesterdayStr) {
+        if (routine.lastCompletedDate === yesterdayStr) {
           console.log(
             `Incrementing streak for Routine ${routine.id}: ${routine.streak} -> ${routine.streak + 1}`,
           );
@@ -94,11 +91,9 @@ export class RoutineLogsService {
         }
       }
 
-      console.log(
-        `Updating Routine ${routine.id}: is_ai_verified ${routine.is_ai_verified} -> true`,
-      );
-      routine.is_ai_verified = true;
-      routine.last_completed_date = today;
+      console.log(`Updating Routine ${routine.id}: isAiVerified ${routine.isAiVerified} -> true`);
+      routine.isAiVerified = true;
+      routine.lastCompletedDate = today;
       await this.routinesRepository.save(routine);
 
       // 3. Award XP
@@ -127,7 +122,7 @@ export class RoutineLogsService {
     routineId: string,
     startDate: string,
     endDate: string,
-  ) {
+  ): Promise<{ date: string; isDone: boolean }[]> {
     if (!startDate || !endDate) {
       return [];
     }
@@ -142,7 +137,7 @@ export class RoutineLogsService {
       order: { logDate: 'ASC' },
     });
 
-    return logs.map(log => {
+    return logs.map((log) => {
       return {
         date:
           log.logDate instanceof Date

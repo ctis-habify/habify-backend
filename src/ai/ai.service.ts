@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException, OnModuleInit } from '@nestjs/common';
 import axios from 'axios';
 import sharp from 'sharp';
 import {
@@ -13,17 +8,16 @@ import {
   Tensor,
 } from '@xenova/transformers';
 
-type VerifyPayload = {
+export interface VerifyPayload {
   imageUrl: string;
-  text: string; // verification prompt / task text
-};
+  text: string;
+}
 
-export type VerifyResult = {
+export interface VerifyResult {
   score: number;
   verified: boolean;
-};
+}
 
-// CLIP normalize constants
 const MEAN = [0.48145466, 0.4578275, 0.40821073];
 const STD = [0.26862954, 0.26130258, 0.27577711];
 const INPUT_SIZE = 224;
@@ -32,8 +26,8 @@ const MODEL_ID = 'Xenova/clip-vit-base-patch32';
 @Injectable()
 export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
-  private textModel: any = null;
-  private visionModel: any = null;
+  private textModel: CLIPTextModelWithProjection | null = null;
+  private visionModel: CLIPVisionModelWithProjection | null = null;
   private tokenizer: any = null;
   private readonly threshold: number;
 
@@ -41,15 +35,16 @@ export class AiService implements OnModuleInit {
     this.threshold = Number(process.env.VERIFY_THRESHOLD ?? 0.25);
   }
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     try {
       await this.ensureModelsLoaded();
-    } catch (err) {
-      this.logger.error(`Failed to load CLIP models: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to load CLIP models: ${message}`);
     }
   }
 
-  private async ensureModelsLoaded() {
+  private async ensureModelsLoaded(): Promise<void> {
     if (this.textModel && this.visionModel && this.tokenizer) return;
 
     this.logger.log(`[AI] Loading models: ${MODEL_ID}`);
@@ -70,34 +65,28 @@ export class AiService implements OnModuleInit {
     try {
       await this.ensureModelsLoaded();
 
-      // 1) download image
       const imgBuf = await this.downloadImageBuffer(payload.imageUrl);
-
-      // 2) preprocess
       const imageInputs = await this.preprocessToPixelValuesFromBuffer(imgBuf);
-
-      // 3) tokenize text
       const textInputs = await this.tokenizer([payload.text], {
         padding: true,
         truncation: true,
-        return_tensors: 'pt',
+        returnTensors: 'pt',
       });
 
-      // 4) encode
-      const { image_embeds } = await this.visionModel(imageInputs);
-      const { text_embeds } = await this.textModel(textInputs);
+      const { image_embeds: imageEmbeds } = await this.visionModel!(imageInputs);
+      const { text_embeds: textEmbeds } = await this.textModel!(textInputs);
 
-      // 5) similarity
-      const img = this.l2NormalizeFloat32(image_embeds.data);
-      const txt = this.l2NormalizeFloat32(text_embeds.data);
+      const img = this.l2NormalizeFloat32(imageEmbeds.data);
+      const txt = this.l2NormalizeFloat32(textEmbeds.data);
       const similarity = this.cosineSimilarity(img, txt);
 
       const verified = similarity >= this.threshold;
 
       return { score: similarity, verified };
-    } catch (err) {
-      this.logger.error(`AI verify error: ${err.message}`, err.stack);
-      throw new ServiceUnavailableException(`AI verification failed: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`AI verify error: ${message}`);
+      throw new ServiceUnavailableException(`AI verification failed: ${message}`);
     }
   }
 
@@ -105,12 +94,15 @@ export class AiService implements OnModuleInit {
     const res = await axios.get(url, {
       responseType: 'arraybuffer',
       timeout: 25000,
-      maxContentLength: 10 * 1024 * 1024, // 10MB
+      maxContentLength: 10 * 1024 * 1024,
     });
     return Buffer.from(res.data);
   }
 
-  private async preprocessToPixelValuesFromBuffer(buf: Buffer, size = INPUT_SIZE) {
+  private async preprocessToPixelValuesFromBuffer(
+    buf: Buffer,
+    size = INPUT_SIZE,
+  ): Promise<{ pixelValues: Tensor }> {
     const { data: raw, info } = await sharp(buf)
       .removeAlpha()
       .resize(size, size, { fit: 'cover', position: 'centre' })
@@ -121,9 +113,9 @@ export class AiService implements OnModuleInit {
       throw new Error(`Expected 3 channels, got ${info.channels}`);
     }
 
-    const H = info.height,
-      W = info.width,
-      C = 3;
+    const H = info.height;
+    const W = info.width;
+    const C = 3;
     const out = new Float32Array(C * H * W);
 
     let idx = 0;
@@ -140,7 +132,7 @@ export class AiService implements OnModuleInit {
       }
     }
 
-    return { pixel_values: new Tensor('float32', out, [1, 3, H, W]) };
+    return { pixelValues: new Tensor('float32', out, [1, 3, H, W]) };
   }
 
   private l2NormalizeFloat32(arr: Float32Array): Float32Array {

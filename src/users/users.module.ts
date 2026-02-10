@@ -4,7 +4,7 @@ import { User } from './users.entity';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { AuthModule } from 'src/auth/auth.module';
-import { RoutineLog } from 'src/routine_logs/routine_logs.entity';
+import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
 
 @Module({
   imports: [forwardRef(() => AuthModule), TypeOrmModule.forFeature([User, RoutineLog])],

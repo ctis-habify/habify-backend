@@ -7,9 +7,9 @@ import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
 import { RoutineListItemDto } from 'src/common/dto/routines/routine-list-item.dto';
 
 import { Category } from 'src/categories/categories.entity';
-import { RoutineList } from 'src/routine_lists/routine_lists.entity';
+import { RoutineList } from 'src/routine-lists/routine-lists.entity';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
-import { RoutineLog } from 'src/routine_logs/routine_logs.entity';
+import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
 import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
 @Injectable()
 export class RoutinesService {
@@ -21,7 +21,7 @@ export class RoutinesService {
     private readonly routineListRepo: Repository<RoutineList>,
 
     @InjectRepository(RoutineLog)
-    private logRepo: Repository<RoutineLog>,
+    private readonly logRepo: Repository<RoutineLog>,
 
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
@@ -30,29 +30,29 @@ export class RoutinesService {
   // List routines by user
   async getUserRoutines(userId: string): Promise<Routine[]> {
     return this.routineRepo.find({
-      where: { user_id: userId },
-      order: { start_time: 'ASC' },
+      where: { userId: userId },
+      order: { startTime: 'ASC' },
     });
   }
 
   //Get routine by id
-  async getRoutineById(userId: string, routineId: string): Promise<Routine> {
+  async getRoutineById(userId: string, routineId: string): Promise<Routine | null> {
     return this.routineRepo.findOne({
-      where: { user_id: userId, id: routineId },
+      where: { userId: userId, id: routineId },
     });
   }
 
   // create new routine
   async createRoutine(data: CreateRoutineDto & { userId: string }): Promise<Routine> {
     const routine = this.routineRepo.create({
-      user_id: data.userId,
-      routine_list_id: data.routineListId,
-      routine_name: data.routineName,
-      frequency_type: data.frequencyType,
-      start_time: data.startTime ?? '00:00:00',
-      end_time: data.endTime ?? '23:59:59',
-      start_date: data.startDate,
-      is_ai_verified: false,
+      userId: data.userId,
+      routineListId: data.routineListId,
+      routineName: data.routineName,
+      frequencyType: data.frequencyType,
+      startTime: data.startTime ?? '00:00:00',
+      endTime: data.endTime ?? '23:59:59',
+      startDate: data.startDate,
+      isAiVerified: false,
     });
 
     const saved = await this.routineRepo.save(routine);
@@ -66,49 +66,49 @@ export class RoutinesService {
   }
 
   // update routine
-  async updateRoutine(userId: string, routineId: string, dto: UpdateRoutineDto) {
+  async updateRoutine(userId: string, routineId: string, dto: UpdateRoutineDto): Promise<Routine> {
     const routine = await this.routineRepo.findOne({
-      where: { id: routineId, user_id: userId },
+      where: { id: routineId, userId: userId },
     });
     if (!routine) {
       throw new NotFoundException('Routine not found or access denied');
     }
 
-    const oldFreq = routine.frequency_type?.toLowerCase();
+    const oldFreq = routine.frequencyType?.toLowerCase();
     const newFreq = dto.frequencyType?.toLowerCase();
 
     // Mapping manual fields
-    if (dto.routineName) routine.routine_name = dto.routineName;
-    if (dto.frequencyType) routine.frequency_type = dto.frequencyType;
-    if (dto.startDate) routine.start_date = dto.startDate;
+    if (dto.routineName) routine.routineName = dto.routineName;
+    if (dto.frequencyType) routine.frequencyType = dto.frequencyType;
+    if (dto.startDate) routine.startDate = dto.startDate;
 
     // Spesifik kural: daily -> weekly geçişinde zamanları sıfırla
     if (oldFreq === 'daily' && newFreq === 'weekly') {
-      routine.start_time = '00:00:00';
-      routine.end_time = '23:59:59';
+      routine.startTime = '00:00:00';
+      routine.endTime = '23:59:59';
     } else {
       // Eğer geçiş yoksa ve yeni zamanlar gelmişse onları uygula
-      if (dto.startTime) routine.start_time = dto.startTime;
-      if (dto.endTime) routine.end_time = dto.endTime;
+      if (dto.startTime) routine.startTime = dto.startTime;
+      if (dto.endTime) routine.endTime = dto.endTime;
     }
 
     const updated = await this.routineRepo.save(routine);
     return updated;
   }
 
-  async deleteRoutine(userId: string, routineId: string) {
+  async deleteRoutine(userId: string, routineId: string): Promise<{ message: string }> {
     const found = await this.routineRepo.findOne({
       where: {
-        user_id: userId,
+        userId: userId,
         id: routineId,
       },
     });
-    if (found) console.log('ROUTINE IS FOUND: ', found.routine_name);
+    if (found) console.log('ROUTINE IS FOUND: ', found.routineName);
     else {
       return { message: 'ROUTINE IS NOT FOUND!' };
     }
 
-    await this.routineRepo.delete({ id: found.id, user_id: found.user_id });
+    await this.routineRepo.delete({ id: found.id, userId: found.userId });
     return { message: 'Routine deleted successfully' };
   }
 
@@ -123,7 +123,7 @@ export class RoutinesService {
 
     for (const list of lists) {
       const routinesSorted = [...(list.routines ?? [])].sort((a, b) =>
-        a.start_time.localeCompare(b.start_time),
+        a.startTime.localeCompare(b.startTime),
       );
 
       const routineDtos: RoutineListItemDto[] = [];
@@ -132,16 +132,16 @@ export class RoutinesService {
         // Recalculate remaining minutes based on frequency logic
         const now = new Date();
         let endAt = new Date();
-        const [h, m, s] = routine.end_time.split(':').map(Number);
+        const [h, m, s] = routine.endTime.split(':').map(Number);
 
         let isWeeklyPending = false;
 
-        const frequencyLower = routine.frequency_type.toLowerCase();
+        const frequencyLower = routine.frequencyType.toLowerCase();
 
         if (frequencyLower === 'weekly') {
           // Weekly: Reset every 7 days from start_date
           // Parse start_date (YYYY-MM-DD)
-          const [sy, sm, sd] = routine.start_date.split('-').map(Number);
+          const [sy, sm, sd] = routine.startDate.split('-').map(Number);
           const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
 
           // Calculate days passed since start
@@ -189,7 +189,7 @@ export class RoutinesService {
             remainingLabel = this.formatRemainingLabel(remainingMinutes);
           }
         }
-        const isDone = routine.is_ai_verified;
+        const isDone = routine.isAiVerified;
 
         if (remainingMinutes <= 0 && !isDone) {
           remainingLabel = 'Failed';
@@ -197,11 +197,11 @@ export class RoutinesService {
 
         routineDtos.push({
           id: routine.id,
-          routineName: routine.routine_name,
-          frequencyType: routine.frequency_type,
-          startTime: routine.start_time,
-          endTime: routine.end_time,
-          startDate: routine.start_date,
+          routineName: routine.routineName,
+          frequencyType: routine.frequencyType,
+          startTime: routine.startTime,
+          endTime: routine.endTime,
+          startDate: routine.startDate,
           remainingMinutes: remainingMinutes,
           remainingLabel,
           isDone: isDone,
@@ -241,16 +241,16 @@ export class RoutinesService {
     // 2. Fetch User's Routines active today
     const allRoutines = await this.routineRepo.find({
       where: {
-        user_id: userId,
-        start_date: LessThanOrEqual(todayString), // Must have started already
+        userId: userId,
+        startDate: LessThanOrEqual(todayString), // Must have started already
       },
-      relations: ['routine_list'], // To get Category/List name
+      relations: ['routineList'], // To get Category/List name
     });
 
     // 3. Filter for TODAY (Daily OR Matching Week Day)
-    const todaysRoutines = allRoutines.filter(routine => {
-      if (routine.frequency_type.toLowerCase() === 'daily') return true;
-      if (routine.frequency_type.toLowerCase() === 'weekly') {
+    const todaysRoutines = allRoutines.filter((routine) => {
+      if (routine.frequencyType.toLowerCase() === 'daily') return true;
+      if (routine.frequencyType.toLowerCase() === 'weekly') {
         return true;
       }
       return false;
@@ -272,12 +272,12 @@ export class RoutinesService {
     });
 
     // Create a Set of completed routine IDs for fast lookup
-    const completedRoutineIds = new Set(todaysLogs.map(log => log.routine.id));
+    const completedRoutineIds = new Set(todaysLogs.map((log) => log.routine.id));
 
     const result = await Promise.all(
-      todaysRoutines.map(async routine => {
+      todaysRoutines.map(async (routine) => {
         // A. Calculate End Time for TODAY
-        const [h, m, s] = routine.end_time.split(':').map(Number);
+        const [h, m, s] = routine.endTime.split(':').map(Number);
         const endAt = new Date(); // Today
         endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
 
@@ -288,8 +288,8 @@ export class RoutinesService {
 
         let remainingLabel = '';
 
-        if (routine.frequency_type.toLowerCase() === 'weekly') {
-          const [sy, sm, sd] = routine.start_date.split('-').map(Number);
+        if (routine.frequencyType.toLowerCase() === 'weekly') {
+          const [sy, sm, sd] = routine.startDate.split('-').map(Number);
           const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
 
           const diffTime = now.getTime() - start.getTime();
@@ -309,11 +309,11 @@ export class RoutinesService {
 
         return {
           id: routine.id,
-          title: routine.routine_name,
-          category: routine.routine_list?.title || 'General',
-          startTime: routine.start_time,
-          endTime: routine.end_time,
-          frequency: routine.frequency_type,
+          title: routine.routineName,
+          category: routine.routineList?.title || 'General',
+          startTime: routine.startTime,
+          endTime: routine.endTime,
+          frequency: routine.frequencyType,
           isCompleted: completedRoutineIds.has(routine.id),
           remainingLabel: remainingLabel,
           streak: routine.streak,
