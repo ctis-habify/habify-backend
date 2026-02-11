@@ -16,7 +16,7 @@ export default [
     },
     rules: {
       "no-unused-vars": "off",
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
@@ -24,6 +24,34 @@ export default [
           varsIgnorePattern: "^_",
         },
       ],
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          selector: "default",
+          format: ["camelCase"],
+          leadingUnderscore: "allow",
+          trailingUnderscore: "allow",
+        },
+        {
+          selector: "variable",
+          format: ["camelCase", "UPPER_CASE"],
+          leadingUnderscore: "allow",
+          trailingUnderscore: "allow",
+        },
+        {
+          selector: "typeLike",
+          format: ["PascalCase"],
+        },
+        {
+          selector: "interface",
+          format: ["PascalCase"],
+          custom: {
+            regex: "^I[A-Z]",
+            match: false,
+          },
+        },
+      ],
+      "no-console": "warn",
     },
   },
 ];

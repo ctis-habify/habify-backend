@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RoutineList } from './routine_lists.entity';
+import { RoutineList } from './routine-lists.entity';
 import { CreateRoutineListDto } from '../common/dto/routines/create-routine-list.dto';
 import { Category } from '../categories/categories.entity';
 import { UpdateRoutineListDto } from '../common/dto/routines/update-routine-list.dto';
@@ -11,14 +11,14 @@ import { Routine } from 'src/routines/routines.entity';
 export class RoutineListsService {
   constructor(
     @InjectRepository(RoutineList)
-    private routineListRepository: Repository<RoutineList>,
+    private readonly routineListRepository: Repository<RoutineList>,
     @InjectRepository(Category)
-    private categoryRepository: Repository<Category>,
+    private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Routine)
-    private routineRepository: Repository<Routine>,
+    private readonly routineRepository: Repository<Routine>,
   ) {}
 
-  async create(createDto: CreateRoutineListDto, userId: string) {
+  async create(createDto: CreateRoutineListDto, userId: string): Promise<RoutineList> {
     const { title, categoryId } = createDto;
 
     const category = await this.categoryRepository.findOne({
@@ -37,14 +37,14 @@ export class RoutineListsService {
     return await this.routineListRepository.save(newList);
   }
 
-  async findAll(userId: string) {
+  async findAll(userId: string): Promise<RoutineList[]> {
     return await this.routineListRepository.find({
       where: { userId: userId },
       relations: ['category'],
     });
   }
 
-  async update(id: number, updateDto: UpdateRoutineListDto, userId: string) {
+  async update(id: number, updateDto: UpdateRoutineListDto, userId: string): Promise<RoutineList> {
     const list = await this.routineListRepository.findOne({
       where: { id, userId },
     });
@@ -69,7 +69,7 @@ export class RoutineListsService {
     return await this.routineListRepository.save(list);
   }
 
-  async remove(id: number, userId: string) {
+  async remove(id: number, userId: string): Promise<{ message: string }> {
     const list = await this.routineListRepository.findOne({
       where: { id, userId },
     });
@@ -79,13 +79,11 @@ export class RoutineListsService {
 
     // Check for associated routines
     const routinesCount = await this.routineRepository.count({
-      where: { routine_list_id: id },
+      where: { routineListId: id },
     });
 
     if (routinesCount > 0) {
-      throw new ConflictException(
-        'Cannot delete routine list: It contains one or more routines.',
-      );
+      throw new ConflictException('Cannot delete routine list: It contains one or more routines.');
     }
 
     await this.routineListRepository.delete(id);

@@ -20,18 +20,14 @@ export class GcsService {
     this.bucket = this.storage.bucket(bucketName);
   }
 
-  private ensureObjectPath(objectPath: string) {
+  private ensureObjectPath(objectPath: string): string {
     const p = objectPath?.trim();
     if (!p) throw new Error('objectPath is required');
     if (p.startsWith('/')) throw new Error('objectPath must not start with "/"');
     return p;
   }
 
-  async getSignedWriteUrl(
-    objectPath: string,
-    mimeType: string,
-    expiresSec = 600,
-  ): Promise<string> {
+  async getSignedWriteUrl(objectPath: string, mimeType: string, expiresSec = 600): Promise<string> {
     const path = this.ensureObjectPath(objectPath);
     const ct = mimeType?.trim();
     if (!ct) throw new Error('contentType is required');

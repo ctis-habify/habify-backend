@@ -6,7 +6,7 @@ import { VerificationService } from './verification.service';
 import { Verification } from './verification.entity';
 import { AiModule } from 'src/ai/ai.module';
 import { StorageModule } from 'src/storage/storage.module';
-import { RoutineLogsModule } from 'src/routine_logs/routine_logs.module';
+import { RoutineLogsModule } from 'src/routine-logs/routine-logs.module';
 import { Routine } from 'src/routines/routines.entity';
 import { VerificationProcessor } from 'src/verification/verification.processor';
 import { AuthModule } from 'src/auth/auth.module';

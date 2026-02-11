@@ -13,7 +13,11 @@ function isAllowedMime(mime: string): mime is AllowedMime {
 export class SignedUrlService {
   constructor(private readonly gcs: GcsService) {}
 
-  async createUploadUrl(userId: string, fileName: string, mimeType: string) {
+  async createUploadUrl(
+    userId: string,
+    fileName: string,
+    mimeType: string,
+  ): Promise<{ uploadUrl: string; objectPath: string; expiresInSeconds: number }> {
     if (!isAllowedMime(mimeType)) {
       throw new BadRequestException('Unsupported mimeType');
     }

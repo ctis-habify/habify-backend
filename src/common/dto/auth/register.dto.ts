@@ -1,11 +1,4 @@
-import {
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsDateString,
-  MinLength,
-} from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsDateString, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Gender } from 'src/users/users.entity';
 
@@ -19,7 +12,7 @@ export class RegisterDto {
   @IsEmail()
   email: string;
 
-  @ApiPropertyOptional({ enum: Gender, example: Gender.FEMALE })
+  @ApiPropertyOptional({ enum: Gender, example: Gender.female })
   @IsOptional()
   @IsEnum(Gender)
   gender?: Gender;

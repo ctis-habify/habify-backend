@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ExecutionContext } from '@nestjs/common';
 import request from 'supertest';
 import { getQueueToken } from '@nestjs/bull';
 
@@ -38,9 +38,9 @@ describe('Verification E2E (minimal)', () => {
         {
           provide: AuthGuard,
           useValue: {
-            canActivate: context => {
+            canActivate: (context: ExecutionContext) => {
               const req = context.switchToHttp().getRequest();
-              req.user = { sub: 'user-1' };
+              req.user = { sub: 'user-1', id: 'user-1' };
               return true;
             },
           },
@@ -58,9 +58,9 @@ describe('Verification E2E (minimal)', () => {
     })
       .overrideGuard(AuthGuard)
       .useValue({
-        canActivate: context => {
+        canActivate: (context: ExecutionContext) => {
           const req = context.switchToHttp().getRequest();
-          req.user = { sub: 'user-1' };
+          req.user = { sub: 'user-1', id: 'user-1' };
           return true;
         },
       })

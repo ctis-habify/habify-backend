@@ -9,11 +9,13 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
-import { RoutineLogsService } from './routine_logs.service';
+import { RoutineLogsService } from './routine-logs.service';
 import { CreateRoutineLogDto } from '../common/dto/routines/create-routine-logs.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
-import { RoutineLog } from './routine_logs.entity';
+import { RoutineLog } from './routine-logs.entity';
+
+import type { Request } from 'express';
 
 @ApiBearerAuth('access-token')
 @Controller('routine-logs')
@@ -22,21 +24,22 @@ export class RoutineLogsController {
   constructor(private readonly logsService: RoutineLogsService) {}
 
   @Post()
-  create(@Body() createLogDto: CreateRoutineLogDto, @Req() req) {
+  create(@Body() createLogDto: CreateRoutineLogDto, @Req() req: Request): Promise<RoutineLog> {
+    const userId = (req.user as any).id;
     return this.logsService.create(
       createLogDto.routineId,
-      createLogDto.verificationImageUrl,
-      req.user.sub,
+      createLogDto.verificationImageUrl!,
+      userId,
     );
   }
 
   @Get('routine/:routineId')
   @ApiOkResponse({ type: RoutineLog, isArray: true })
   async getLogsByRoutine(
-    @Param('routineId', ParseIntPipe) routineId: string,
-    @Req() req,
+    @Param('routineId') routineId: string,
+    @Req() req: Request,
   ): Promise<RoutineLog[]> {
-    const userId = req.user.sub as string;
+    const userId = (req.user as any).id;
     return this.logsService.listLogs(routineId, userId);
   }
 
@@ -48,12 +51,12 @@ export class RoutineLogsController {
   @ApiQuery({ name: 'endDate', example: '2025-12-31', required: true })
   @ApiQuery({ name: 'routineId', example: '1', required: true })
   async getCalendar(
-    @Req() req,
+    @Req() req: Request,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
     @Query('routineId') routineId: string,
-  ) {
-    const userId = req.user.sub as string;
+  ): Promise<{ date: string; isDone: boolean }[]> {
+    const userId = (req.user as any).id;
     return this.logsService.getCalendarLogs(userId, routineId, startDate, endDate);
   }
 }

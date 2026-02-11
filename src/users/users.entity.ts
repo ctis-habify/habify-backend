@@ -7,10 +7,10 @@ import {
 } from 'typeorm';
 
 export enum Gender {
-  FEMALE = 'female',
-  MALE = 'male',
-  OTHER = 'other',
-  NA = 'na',
+  female = 'female',
+  male = 'male',
+  other = 'other',
+  na = 'na',
 }
 
 @Entity('users')
@@ -28,12 +28,12 @@ export class User {
     type: 'enum',
     enum: Gender,
     nullable: true,
-    default: Gender.NA,
+    default: Gender.na,
   })
   gender: Gender;
 
   @Column({ type: 'date', name: 'birthDate', nullable: true })
-  birthDate: Date;
+  birthDate: Date | null;
 
   @Column({ name: 'password_hash' })
   passwordHash: string;

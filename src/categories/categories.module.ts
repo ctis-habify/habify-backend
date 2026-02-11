@@ -4,7 +4,7 @@ import { CategoriesService } from './categories.service';
 import { CategoriesController } from './categories.controller';
 import { Category } from './categories.entity';
 import { AuthModule } from 'src/auth/auth.module';
-import { RoutineList } from 'src/routine_lists/routine_lists.entity';
+import { RoutineList } from 'src/routine-lists/routine-lists.entity';
 
 @Module({
   imports: [AuthModule, TypeOrmModule.forFeature([Category, RoutineList])],

@@ -4,7 +4,7 @@ import { RegisterDto } from '../common/dto/auth/register.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './users.entity';
-import { RoutineLog } from 'src/routine_logs/routine_logs.entity';
+import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
 
 @Injectable()
 export class UsersService {
@@ -46,7 +46,7 @@ export class UsersService {
   }
 
   // Updates user's last login timestamp
-  async updateLastLogin(user: User) {
+  async updateLastLogin(user: User): Promise<void> {
     user.lastLoginAt = new Date();
     await this.usersRepo.save(user);
   }

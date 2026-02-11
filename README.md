@@ -64,6 +64,8 @@ If these return JSON responses, the server is working correctly.
 
 6. Code Quality Tools
 
+For a detailed guide on our coding standards, naming conventions, and best practices, see [CODING_STANDARDS.md](./CODING_STANDARDS.md).
+
 Run linting
 
 npm run lint

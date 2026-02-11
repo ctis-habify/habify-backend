@@ -1,0 +1,119 @@
+
+> habify-backend@1.0.0 build
+> nest build
+
+[96msrc/routine_lists/routine_lists.controller.ts[0m:[93m27[0m:[93m51[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m27[0m   create(@Body() createDto: CreateRoutineListDto, @Req() req) {
+[7m  [0m [91m                                                  ~~~~~~~~~~[0m
+[96msrc/routine_lists/routine_lists.controller.ts[0m:[93m33[0m:[93m11[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m33[0m   findAll(@Req() req) {
+[7m  [0m [91m          ~~~~~~~~~~[0m
+[96msrc/routine_lists/routine_lists.controller.ts[0m:[93m39[0m:[93m76[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m39[0m   update(@Param('id') id: string, @Body() updateDto: UpdateRoutineListDto, @Req() req) {
+[7m  [0m [91m                                                                           ~~~~~~~~~~[0m
+[96msrc/routine_lists/routine_lists.controller.ts[0m:[93m45[0m:[93m35[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m45[0m   remove(@Param('id') id: string, @Req() req) {
+[7m  [0m [91m                                  ~~~~~~~~~~[0m
+[96msrc/routine_logs/routine_logs.controller.ts[0m:[93m25[0m:[93m53[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m25[0m   create(@Body() createLogDto: CreateRoutineLogDto, @Req() req) {
+[7m  [0m [91m                                                    ~~~~~~~~~~[0m
+[96msrc/routine_logs/routine_logs.controller.ts[0m:[93m28[0m:[93m7[0m - [91merror[0m[90m TS2345: [0mArgument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+
+[7m28[0m       createLogDto.verificationImageUrl,
+[7m  [0m [91m      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/routine_logs/routine_logs.controller.ts[0m:[93m37[0m:[93m5[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m37[0m     @Req() req,
+[7m  [0m [91m    ~~~~~~~~~~[0m
+[96msrc/routine_logs/routine_logs.controller.ts[0m:[93m51[0m:[93m5[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m51[0m     @Req() req,
+[7m  [0m [91m    ~~~~~~~~~~[0m
+[96msrc/routines/routines.controller.ts[0m:[93m40[0m:[93m23[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m40[0m   async getMyRoutines(@Req() req) {
+[7m  [0m [91m                      ~~~~~~~~~~[0m
+[96msrc/routines/routines.controller.ts[0m:[93m48[0m:[93m23[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m48[0m   async createRoutine(@Req() req, @Body() dto: CreateRoutineDto) {
+[7m  [0m [91m                      ~~~~~~~~~~[0m
+[96msrc/routines/routines.controller.ts[0m:[93m62[0m:[93m29[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m62[0m   async getMyRoutinesListed(@Req() req): Promise<RoutineListWithRoutinesDto[]> {
+[7m  [0m [91m                            ~~~~~~~~~~[0m
+[96msrc/routines/routines.controller.ts[0m:[93m70[0m:[93m73[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m70[0m   async verify(@Body() body: { routineId: string; objectPath: string }, @Req() req) {
+[7m  [0m [91m                                                                        ~~~~~~~~~~[0m
+[96msrc/routines/routines.controller.ts[0m:[93m84[0m:[93m26[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m84[0m   async getTodayRoutines(@Req() req): Promise<TodayScreenResponseDto> {
+[7m  [0m [91m                         ~~~~~~~~~~[0m
+[96msrc/routines/routines.controller.ts[0m:[93m100[0m:[93m24[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m100[0m   async getRoutineById(@Req() req, @Param('id') id: string) {
+[7m   [0m [91m                       ~~~~~~~~~~[0m
+[96msrc/routines/routines.controller.ts[0m:[93m108[0m:[93m5[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m108[0m     @Req() req,
+[7m   [0m [91m    ~~~~~~~~~~[0m
+[96msrc/routines/routines.controller.ts[0m:[93m118[0m:[93m23[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m118[0m   async deleteRoutine(@Req() req, @Param('id') id: string) {
+[7m   [0m [91m                      ~~~~~~~~~~[0m
+[96msrc/routines/routines.service.ts[0m:[93m40[0m:[93m5[0m - [91merror[0m[90m TS2322: [0mType 'Routine | null' is not assignable to type 'Routine'.
+  Type 'null' is not assignable to type 'Routine'.
+
+[7m40[0m     return this.routineRepo.findOne({
+[7m  [0m [91m    ~~~~~~[0m
+[96msrc/storage/uploads.controller.ts[0m:[93m12[0m:[93m58[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m12[0m   async createSignedUrl(@Body() dto: CreateSignedUrlDto, @Req() req) {
+[7m  [0m [91m                                                         ~~~~~~~~~~[0m
+[96msrc/users/users.controller.ts[0m:[93m14[0m:[93m15[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m14[0m   async getMe(@Req() req) {
+[7m  [0m [91m              ~~~~~~~~~~[0m
+[96msrc/users/users.service.ts[0m:[93m36[0m:[93m33[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 3, '(entityLikeArray: DeepPartial<User>[]): User[]', gave the following error.
+    Object literal may only specify known properties, and 'name' does not exist in type 'DeepPartial<User>[]'.
+  Overload 2 of 3, '(entityLike: DeepPartial<User>): User', gave the following error.
+    Type 'Date | null' is not assignable to type 'DeepPartial<Date> | undefined'.
+      Type 'null' is not assignable to type 'DeepPartial<Date> | undefined'.
+
+[7m36[0m     const user = this.usersRepo.create({
+[7m  [0m [91m                                ~~~~~~[0m
+
+  [96msrc/users/users.entity.ts[0m:[93m36[0m:[93m3[0m
+    [7m36[0m   birthDate: Date;
+    [7m  [0m [96m  ~~~~~~~~~[0m
+    The expected type comes from property 'birthDate' which is declared here on type 'DeepPartial<User>'
+[96msrc/users/users.service.ts[0m:[93m45[0m:[93m5[0m - [91merror[0m[90m TS2740: [0mType 'User[]' is missing the following properties from type 'User': id, name, email, gender, and 7 more.
+
+[7m45[0m     return this.usersRepo.save(user);
+[7m  [0m [91m    ~~~~~~[0m
+[96msrc/verification/verification.controller.ts[0m:[93m27[0m:[93m46[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m27[0m   submit(@Body() dto: SubmitVerificationDto, @Req() req): Promise<Verification> {
+[7m  [0m [91m                                             ~~~~~~~~~~[0m
+[96msrc/xp_logs/xp_logs.controller.ts[0m:[93m14[0m:[93m45[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m14[0m   create(@Body() createDto: CreateXpLogDto, @Req() req) {
+[7m  [0m [91m                                            ~~~~~~~~~~[0m
+[96msrc/xp_logs/xp_logs.controller.ts[0m:[93m19[0m:[93m11[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m19[0m   findAll(@Req() req) {
+[7m  [0m [91m          ~~~~~~~~~~[0m
+[96msrc/xp_logs/xp_logs.controller.ts[0m:[93m25[0m:[93m20[0m - [91merror[0m[90m TS7006: [0mParameter 'req' implicitly has an 'any' type.
+
+[7m25[0m   async getTotalXp(@Req() req) {
+[7m  [0m [91m                   ~~~~~~~~~~[0m
+
+Found 25 error(s).
+

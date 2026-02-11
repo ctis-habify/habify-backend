@@ -3,29 +3,29 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category } from './categories.entity';
 import { CreateCategoryDto } from '../common/dto/categories/create-category.dto';
-import { RoutineList } from 'src/routine_lists/routine_lists.entity';
+import { RoutineList } from 'src/routine-lists/routine-lists.entity';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     @InjectRepository(Category)
-    private categoriesRepository: Repository<Category>,
+    private readonly categoriesRepository: Repository<Category>,
     @InjectRepository(RoutineList)
-    private routineListRepository: Repository<RoutineList>,
+    private readonly routineListRepository: Repository<RoutineList>,
   ) {}
 
-  async create(createCategoryDto: CreateCategoryDto) {
+  async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
     const newCategory = this.categoriesRepository.create(createCategoryDto);
     return await this.categoriesRepository.save(newCategory);
   }
 
-  async findAll() {
+  async findAll(): Promise<Category[]> {
     return await this.categoriesRepository.find({
       order: { id: 'ASC' },
     });
   }
 
-  async remove(id: number) {
+  async remove(id: number): Promise<{ message: string }> {
     // Check if category exists
     const category = await this.categoriesRepository.findOne({ where: { id } });
     if (!category) {

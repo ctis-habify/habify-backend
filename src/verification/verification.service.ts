@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue, Job } from 'bull';
@@ -13,7 +8,7 @@ import { SubmitVerificationDto } from '../common/dto/verification/submit-verific
 import { Routine } from 'src/routines/routines.entity';
 import { AiService } from 'src/ai/ai.service';
 import { GcsService } from 'src/storage/gcs.service';
-import { RoutineLogsService } from 'src/routine_logs/routine_logs.service';
+import { RoutineLogsService } from 'src/routine-logs/routine-logs.service';
 
 export type VerificationJobData = {
   verificationId: string;
@@ -35,7 +30,7 @@ export class VerificationService {
     private readonly verificationQueue: Queue<VerificationJobData>,
   ) {}
 
-  async submit(dto: SubmitVerificationDto, userId: string) {
+  async submit(dto: SubmitVerificationDto, userId: string): Promise<Verification> {
     const routine = await this.routineRepository.findOne({
       where: { id: dto.routineId },
     });
@@ -70,7 +65,7 @@ export class VerificationService {
     return saved;
   }
 
-  async process(job: Job<VerificationJobData>) {
+  async process(job: Job<VerificationJobData>): Promise<void> {
     const verification = await this.verificationRepository.findOne({
       where: { id: job.data.verificationId },
       relations: ['routine'],
@@ -92,7 +87,7 @@ export class VerificationService {
         verification.verificationImageUrl,
         600,
       );
-      const prompt = verification.routine?.routine_name ?? 'Routine verification photo';
+      const prompt = verification.routine?.routineName ?? 'Routine verification photo';
       const aiResult = await this.aiService.verify({ imageUrl: signedUrl, text: prompt });
 
       verification.score = aiResult.score;
@@ -114,15 +109,14 @@ export class VerificationService {
     } catch (err) {
       const reason = err instanceof Error ? err.message : 'Unknown verification error';
       verification.failReason = reason;
-      verification.status =
-        job.attemptsMade + 1 >= (job.opts.attempts ?? 1) ? 'failed' : 'pending';
+      verification.status = job.attemptsMade + 1 >= (job.opts.attempts ?? 1) ? 'failed' : 'pending';
       await this.verificationRepository.save(verification);
       this.logger.error(`Verification ${verification.id} failed: ${reason}`);
       throw err;
     }
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<Verification> {
     const verification = await this.verificationRepository.findOne({ where: { id } });
     if (!verification) {
       throw new NotFoundException('Verification not found');
@@ -130,7 +124,7 @@ export class VerificationService {
     return verification;
   }
 
-  private async updateStatus(id: string, status: Verification['status']) {
+  private async updateStatus(id: string, status: Verification['status']): Promise<void> {
     await this.verificationRepository.update({ id }, { status });
   }
 }
