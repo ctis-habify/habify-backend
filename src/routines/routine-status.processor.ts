@@ -39,7 +39,7 @@ export class RoutineStatusProcessor {
     await this.cache.set(cacheKey, status);
 
     if (isDone) {
-      this.logger.log(`Routine ${routineId} finished, stop scheduling`);
+
       return;
     }
 
@@ -55,9 +55,7 @@ export class RoutineStatusProcessor {
       nextIntervalMinutes = 10;
     }
 
-    this.logger.log(
-      `Routine ${routineId} remaining=${remainingMinutes}m, next in ${nextIntervalMinutes}m`,
-    );
+
 
     await job.queue.add(
       'updateRoutineStatus',

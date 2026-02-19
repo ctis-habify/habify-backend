@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category } from './categories.entity';
 import { CreateCategoryDto } from '../common/dto/categories/create-category.dto';
+import { UpdateCategoryDto } from '../common/dto/categories/update-category.dto';
 import { RoutineList } from 'src/routine-lists/routine-lists.entity';
 
 @Injectable()
@@ -15,14 +16,29 @@ export class CategoriesService {
   ) {}
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
-    const newCategory = this.categoriesRepository.create(createCategoryDto);
+    const newCategory = this.categoriesRepository.create({
+      ...createCategoryDto,
+      type: createCategoryDto.type || 'personal',
+    });
     return await this.categoriesRepository.save(newCategory);
   }
 
-  async findAll(): Promise<Category[]> {
+  async findAll(type?: 'personal' | 'collaborative'): Promise<Category[]> {
+    const whereClause = type ? { type } : {};
     return await this.categoriesRepository.find({
+      where: whereClause,
       order: { id: 'ASC' },
     });
+  }
+
+  async update(id: number, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
+    const category = await this.categoriesRepository.findOne({ where: { id } });
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+
+    Object.assign(category, updateCategoryDto);
+    return await this.categoriesRepository.save(category);
   }
 
   async remove(id: number): Promise<{ message: string }> {

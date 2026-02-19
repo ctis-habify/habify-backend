@@ -13,9 +13,9 @@ export class UsersController {
 
   // Returns the logged-in user's data
   @UseGuards(AuthGuard)
-  @Get('me')
-  async getMe(@Req() req: Request): Promise<User | null> {
-    const userId = (req.user as any).id;
+  @Get('profile')
+  async getProfile(@Req() req: Request): Promise<User | null> {
+    const userId = req.user.id;
     return this.usersService.findById(userId);
   }
 }

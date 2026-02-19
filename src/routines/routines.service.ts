@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, LessThanOrEqual, type Repository } from 'typeorm';
 import { Routine } from './routines.entity';
@@ -9,22 +9,38 @@ import { RoutineListItemDto } from 'src/common/dto/routines/routine-list-item.dt
 import { Category } from 'src/categories/categories.entity';
 import { RoutineList } from 'src/routine-lists/routine-lists.entity';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
-import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
+import { CollaborativeRoutine } from './collaborative-routines.entity';
+import { RoutineLog } from '../routine-logs/routine-logs.entity';
 import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
+import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
+import { randomBytes } from 'crypto';
+import { CreateCollaborativeRoutineDto } from 'src/common/dto/routines/create-collaborative-routine.dto';
+import { RoutineMember } from './routine-members.entity';
+import { UsersService } from 'src/users/users.service';
+import { Gender } from 'src/users/users.entity';
+
 @Injectable()
 export class RoutinesService {
-  constructor(
-    @InjectRepository(Routine)
-    private readonly routineRepo: Repository<Routine>,
+  private readonly logger = new Logger(RoutinesService.name);
 
+  constructor(
     @InjectRepository(RoutineList)
     private readonly routineListRepo: Repository<RoutineList>,
 
     @InjectRepository(RoutineLog)
     private readonly logRepo: Repository<RoutineLog>,
 
+    @InjectRepository(Routine)
+    private routineRepo: Repository<Routine>,
+    @InjectRepository(CollaborativeRoutine)
+    private collaborativeRoutineRepo: Repository<CollaborativeRoutine>,
+    @InjectRepository(RoutineMember)
+    private memberRepo: Repository<RoutineMember>,
+
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
+
+    private readonly usersService: UsersService,
   ) {}
 
   // List routines by user
@@ -42,6 +58,13 @@ export class RoutinesService {
     });
   }
 
+  async getCollaborativeRoutineById(routineId: string): Promise<CollaborativeRoutine | null> {
+    return this.collaborativeRoutineRepo.findOne({
+      where: { id: routineId },
+      relations: ['category'],
+    });
+  }
+
   // create new routine
   async createRoutine(data: CreateRoutineDto & { userId: string }): Promise<Routine> {
     const routine = this.routineRepo.create({
@@ -56,13 +79,173 @@ export class RoutinesService {
     });
 
     const saved = await this.routineRepo.save(routine);
-    console.log('CREATE ROUTINE DATA >>>', data);
-    console.log('CREATE ROUTINE ENTITY >>>', routine);
+
 
     // Worker için ilk job
-    // await this.scheduleStatusJob(saved);
 
     return saved;
+  }
+
+  // Create collaborative routine
+  async createCollaborativeRoutine(
+    data: CreateCollaborativeRoutineDto & { userId: string },
+  ): Promise<CollaborativeRoutine> {
+    const collaborativeKey = randomBytes(4).toString('hex').toUpperCase();
+
+    const routine = this.collaborativeRoutineRepo.create({
+      routineName: data.routineName,
+      frequencyType: data.frequencyType,
+      startTime: data.startTime ?? '00:00:00',
+      endTime: data.endTime ?? '23:59:59',
+      startDate: data.startDate,
+      collaborativeKey: collaborativeKey,
+      creatorId: data.userId,
+      categoryId: data.categoryId,
+      description: data.description,
+      lives: data.lives,
+      isPublic: data.isPublic,
+      rewardCondition: data.rewardCondition,
+      ageRequirement: data.ageRequirement,
+      genderRequirement: data.genderRequirement,
+      xpRequirement: data.xpRequirement,
+      completionXp: data.completionXp,
+    });
+
+    const saved = await this.collaborativeRoutineRepo.save(routine);
+
+    // Initial membership for the creator
+    const creatorMember = this.memberRepo.create({
+      collaborativeRoutineId: saved.id,
+      userId: data.userId,
+      role: 'creator',
+      streak: 0,
+      missedCount: 0,
+    });
+    await this.memberRepo.save(creatorMember);
+
+
+
+    return saved;
+  }
+
+  async joinRoutine(userId: string, key: string): Promise<{ message: string }> {
+    const routine = await this.collaborativeRoutineRepo.findOne({
+      where: { collaborativeKey: key.toUpperCase() },
+    });
+
+    if (!routine) {
+      throw new NotFoundException('Collaborative routine not found with this key');
+    }
+
+    // Check if already a member
+    const existing = await this.memberRepo.findOne({
+      where: { userId, collaborativeRoutineId: routine.id },
+    });
+
+    if (existing) {
+      return { message: 'You are already a member of this routine group' };
+    }
+
+    // Check requirements
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Age requirement check
+    if (routine.ageRequirement) {
+      if (!user.birthDate) {
+        throw new BadRequestException(
+          'This routine requires you to have a birth date set in your profile',
+        );
+      }
+      const age = this.calculateAge(new Date(user.birthDate));
+      if (age < routine.ageRequirement) {
+        throw new BadRequestException(
+          `You must be at least ${routine.ageRequirement} years old to join this routine`,
+        );
+      }
+    }
+
+    // Gender requirement check
+    if (routine.genderRequirement && routine.genderRequirement !== Gender.na) {
+      if (user.gender !== routine.genderRequirement) {
+        throw new BadRequestException(
+          `This routine is only for ${routine.genderRequirement} members`,
+        );
+      }
+    }
+
+    // XP requirement check
+    if (routine.xpRequirement && routine.xpRequirement > 0) {
+      if (user.totalXp < routine.xpRequirement) {
+        throw new BadRequestException(
+          `You need at least ${routine.xpRequirement} XP to join this routine`,
+        );
+      }
+    }
+
+    const membership = this.memberRepo.create({
+      collaborativeRoutineId: routine.id,
+      userId,
+      role: 'member',
+      streak: 0,
+      missedCount: 0,
+    });
+
+    await this.memberRepo.save(membership);
+    return { message: 'Joined collaborative routine successfully' };
+  }
+
+  private calculateAge(birthDate: Date): number {
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+  async getCollaborativeRoutines(userId: string): Promise<CollaborativeRoutine[]> {
+    // Returns routines where user is a member
+    const memberships = await this.memberRepo.find({
+      where: { userId },
+      relations: ['routine', 'routine.category'],
+    });
+    return memberships.map((m) => m.routine);
+  }
+
+  async getGroupDetail(routineId: string): Promise<GroupDetailResponseDto> {
+    const routine = await this.collaborativeRoutineRepo.findOne({
+      where: { id: routineId },
+      relations: ['category', 'members', 'members.user'],
+    });
+
+    if (!routine) {
+      throw new NotFoundException('Group not found');
+    }
+
+    return {
+      id: routine.id,
+      name: routine.routineName,
+      description: routine.description,
+      category: routine.category?.name,
+      rules: {
+        lives: routine.lives,
+        reward: routine.rewardCondition,
+        frequency: routine.frequencyType,
+        time: `${routine.startTime} - ${routine.endTime}`,
+      },
+      inviteKey: routine.collaborativeKey,
+      memberCount: routine.members.length,
+      participants: routine.members.map((m) => ({
+        username: m.user.name,
+        role: m.role,
+        streak: m.streak,
+        joinedAt: m.joinedAt,
+      })),
+    };
   }
 
   // update routine
@@ -81,13 +264,10 @@ export class RoutinesService {
     if (dto.routineName) routine.routineName = dto.routineName;
     if (dto.frequencyType) routine.frequencyType = dto.frequencyType;
     if (dto.startDate) routine.startDate = dto.startDate;
-
-    // Spesifik kural: daily -> weekly geçişinde zamanları sıfırla
     if (oldFreq === 'daily' && newFreq === 'weekly') {
       routine.startTime = '00:00:00';
       routine.endTime = '23:59:59';
     } else {
-      // Eğer geçiş yoksa ve yeni zamanlar gelmişse onları uygula
       if (dto.startTime) routine.startTime = dto.startTime;
       if (dto.endTime) routine.endTime = dto.endTime;
     }
@@ -103,13 +283,11 @@ export class RoutinesService {
         id: routineId,
       },
     });
-    if (found) console.log('ROUTINE IS FOUND: ', found.routineName);
-    else {
+    if (!found) {
       return { message: 'ROUTINE IS NOT FOUND!' };
     }
-
-    await this.routineRepo.delete({ id: found.id, userId: found.userId });
-    return { message: 'Routine deleted successfully' };
+    await this.routineRepo.delete(routineId);
+    return { message: 'ROUTINE IS DELETED SUCCESSFULLY' };
   }
 
   async getAllRoutinesByList(userId: string): Promise<RoutineListWithRoutinesDto[]> {
@@ -233,79 +411,61 @@ export class RoutinesService {
 
   async getTodayRoutines(userId: string): Promise<RoutineResponseDto[]> {
     const today = new Date();
-    // Normalize today to YYYY-MM-DD string for comparison
     const todayString = today.toISOString().split('T')[0];
 
-    // 1. Calculate Day Index
-
-    // 2. Fetch User's Routines active today
-    const allRoutines = await this.routineRepo.find({
+    // 1. Fetch Personal Routines
+    const personalRoutines = await this.routineRepo.find({
       where: {
         userId: userId,
-        startDate: LessThanOrEqual(todayString), // Must have started already
+        startDate: LessThanOrEqual(todayString),
       },
-      relations: ['routineList'], // To get Category/List name
+      relations: ['routineList'],
     });
 
-    // 3. Filter for TODAY (Daily OR Matching Week Day)
-    const todaysRoutines = allRoutines.filter((routine) => {
-      if (routine.frequencyType.toLowerCase() === 'daily') return true;
-      if (routine.frequencyType.toLowerCase() === 'weekly') {
-        return true;
-      }
-      return false;
+    // 2. Fetch Collaborative Memberships
+    const memberships = await this.memberRepo.find({
+      where: { userId: userId },
+      relations: ['routine', 'routine.category'],
     });
 
-    // 4. Check for completions (Logs) for TODAY
-    // We create a start and end of the day to check logs
+    const activeCollabRoutines = memberships
+      .filter((m) => m.routine.startDate <= todayString)
+      .map((m) => m.routine);
+
+    // 3. Merged logic for individual streak and completion
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
     const endOfDay = new Date(today.setHours(23, 59, 59, 999));
 
-    const todaysLogs = await this.logRepo.find({
+    // For personal logs
+    const personalLogs = await this.logRepo.find({
       where: {
         userId: userId,
-        // Check if logDate is within today's range OR exactly matches todayString
         logDate: Between(startOfDay, endOfDay),
         isVerified: true,
       },
       relations: ['routine'],
     });
+    const completedPersonalIds = new Set(personalLogs.map((log) => log.routine.id));
 
-    // Create a Set of completed routine IDs for fast lookup
-    const completedRoutineIds = new Set(todaysLogs.map((log) => log.routine.id));
-
-    const result = await Promise.all(
-      todaysRoutines.map(async (routine) => {
-        // A. Calculate End Time for TODAY
+    // Process Personal Routines
+    const personalResults = personalRoutines
+      .filter(
+        (r) =>
+          r.frequencyType.toLowerCase() === 'daily' || r.frequencyType.toLowerCase() === 'weekly',
+      )
+      .map((routine) => {
         const [h, m, s] = routine.endTime.split(':').map(Number);
-        const endAt = new Date(); // Today
+        const endAt = new Date();
         endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
 
-        // B. Calculate Remaining Minutes
         const now = new Date();
         const diffMs = endAt.getTime() - now.getTime();
         const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
 
-        let remainingLabel = '';
-
-        if (routine.frequencyType.toLowerCase() === 'weekly') {
-          const [sy, sm, sd] = routine.startDate.split('-').map(Number);
-          const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-
-          const diffTime = now.getTime() - start.getTime();
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-          const currentCycleDay = diffDays >= 0 ? diffDays % 7 : 0;
-
-          // If we are NOT in the 7th day (index 6), it is pending
-          if (currentCycleDay < 6) {
-            remainingLabel = 'Pending';
-          }
-        }
-
-        if (!remainingLabel) {
-          remainingLabel = this.formatRemainingLabel(remainingMinutes);
-        }
+        const remainingLabel =
+          routine.frequencyType.toLowerCase() === 'weekly'
+            ? 'Pending'
+            : this.formatRemainingLabel(remainingMinutes);
 
         return {
           id: routine.id,
@@ -314,13 +474,41 @@ export class RoutinesService {
           startTime: routine.startTime,
           endTime: routine.endTime,
           frequency: routine.frequencyType,
-          isCompleted: completedRoutineIds.has(routine.id),
+          isCompleted: completedPersonalIds.has(routine.id),
           remainingLabel: remainingLabel,
           streak: routine.streak,
         };
-      }),
-    );
+      });
 
-    return result;
+    // Process Collaborative Routines
+    const collabResults = activeCollabRoutines
+      .filter(
+        (r) =>
+          r.frequencyType.toLowerCase() === 'daily' || r.frequencyType.toLowerCase() === 'weekly',
+      )
+      .map((routine) => {
+        const membership = memberships.find((m) => m.collaborativeRoutineId === routine.id);
+        const [h, m, s] = routine.endTime.split(':').map(Number);
+        const endAt = new Date();
+        endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+
+        const now = new Date();
+        const diffMs = endAt.getTime() - now.getTime();
+        const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+
+        return {
+          id: routine.id,
+          title: routine.routineName,
+          category: routine.category?.name || 'Group',
+          startTime: routine.startTime,
+          endTime: routine.endTime,
+          frequency: routine.frequencyType,
+          isCompleted: false, // ... would need collab logs here
+          remainingLabel: this.formatRemainingLabel(remainingMinutes),
+          streak: membership?.streak ?? 0,
+        };
+      });
+
+    return [...personalResults, ...collabResults];
   }
 }

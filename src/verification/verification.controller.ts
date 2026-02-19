@@ -8,6 +8,7 @@ import { VerificationRequestDto } from '../common/dto/verification/verification-
 
 import type { Request } from 'express';
 
+
 @ApiTags('verification')
 @ApiBearerAuth('access-token')
 @Controller('verify')
@@ -17,8 +18,8 @@ export class VerificationController {
 
   @Post('submit')
   @ApiOkResponse({ type: Verification })
-  submit(@Body() dto: SubmitVerificationDto, @Req() req: Request): Promise<Verification> {
-    const userId = (req.user as any).id as string;
+  async submit(@Body() dto: SubmitVerificationDto, @Req() req: Request): Promise<Verification> {
+    const userId = req.user.id;
     return this.verificationService.submit(dto, userId);
   }
 
