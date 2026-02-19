@@ -7,8 +7,9 @@ jest.mock('@xenova/transformers', () => {
 });
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bull';
+import { Job } from 'bull';
 
-import { VerificationService } from './verification.service';
+import { VerificationService, VerificationJobData } from './verification.service';
 import { Verification } from './verification.entity';
 import { Routine } from '../routines/routines.entity';
 
@@ -89,7 +90,7 @@ describe('VerificationService (unit)', () => {
       data: { verificationId: 'ver-1' },
       attemptsMade: 0,
       opts: { attempts: 1 },
-    } as any);
+    } as unknown as Job<VerificationJobData>);
 
     // ---- THEN ----
     expect(gcsMock.getSignedReadUrl).toHaveBeenCalled();

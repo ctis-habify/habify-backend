@@ -18,20 +18,26 @@ export class XpLogsController {
     @Body() createDto: CreateXpLogDto,
     @Req() req: Request,
   ): Promise<{ log: XpLog; updatedTotalXp: number }> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.xpLogsService.create(createDto, userId);
   }
 
   @Get()
   findAll(@Req() req: Request): Promise<XpLog[]> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
+    return this.xpLogsService.findAll(userId);
+  }
+
+  @Get('me')
+  async getMyLogs(@Req() req: Request): Promise<XpLog[]> {
+    const userId = req.user.id;
     return this.xpLogsService.findAll(userId);
   }
 
   @Get('total')
   @ApiOperation({ summary: 'Kullanıcının toplam puanını getirir' })
   async getTotalXp(@Req() req: Request): Promise<{ totalXp: number }> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     const total = await this.xpLogsService.getTotalXp(userId);
     return { totalXp: total };
   }

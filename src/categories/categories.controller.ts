@@ -1,9 +1,20 @@
-import { Controller, Post, Get, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  Patch,
+  Param,
+  Body,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { Category } from './categories.entity';
 import { CreateCategoryDto } from '../common/dto/categories/create-category.dto';
-import { AuthGuard } from 'src/auth/auth.guard';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { UpdateCategoryDto } from '../common/dto/categories/update-category.dto';
+import { AuthGuard } from '../auth/auth.guard';
+import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('categories')
 @ApiBearerAuth('access-token')
@@ -20,8 +31,15 @@ export class CategoriesController {
 
   @Get()
   @ApiOperation({ summary: 'Get all categories' })
-  findAll(): Promise<Category[]> {
-    return this.categoriesService.findAll();
+  @ApiQuery({ name: 'type', required: false, enum: ['personal', 'collaborative'] })
+  findAll(@Query('type') type?: 'personal' | 'collaborative'): Promise<Category[]> {
+    return this.categoriesService.findAll(type);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a category by ID' })
+  update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto): Promise<Category> {
+    return this.categoriesService.update(+id, updateCategoryDto);
   }
 
   @Delete(':id')

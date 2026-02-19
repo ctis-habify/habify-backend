@@ -1,21 +1,11 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-  Req,
-  Get,
-  ParseIntPipe,
-  Param,
-  Query,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, Get, Param, Query } from '@nestjs/common';
+import type { Request } from 'express';
+
 import { RoutineLogsService } from './routine-logs.service';
 import { CreateRoutineLogDto } from '../common/dto/routines/create-routine-logs.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { RoutineLog } from './routine-logs.entity';
-
-import type { Request } from 'express';
 
 @ApiBearerAuth('access-token')
 @Controller('routine-logs')
@@ -25,7 +15,7 @@ export class RoutineLogsController {
 
   @Post()
   create(@Body() createLogDto: CreateRoutineLogDto, @Req() req: Request): Promise<RoutineLog> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.logsService.create(
       createLogDto.routineId,
       createLogDto.verificationImageUrl!,
@@ -33,13 +23,13 @@ export class RoutineLogsController {
     );
   }
 
-  @Get('routine/:routineId')
+  @Get(':routineId')
   @ApiOkResponse({ type: RoutineLog, isArray: true })
-  async getLogsByRoutine(
+  async listLogs(
     @Param('routineId') routineId: string,
     @Req() req: Request,
   ): Promise<RoutineLog[]> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.logsService.listLogs(routineId, userId);
   }
 
@@ -56,7 +46,7 @@ export class RoutineLogsController {
     @Query('endDate') endDate: string,
     @Query('routineId') routineId: string,
   ): Promise<{ date: string; isDone: boolean }[]> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.logsService.getCalendarLogs(userId, routineId, startDate, endDate);
   }
 }

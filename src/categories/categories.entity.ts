@@ -7,4 +7,11 @@ export class Category {
 
   @Column()
   name: string;
+
+  @Column({
+    type: 'enum',
+    enum: ['personal', 'collaborative'],
+    default: 'personal',
+  })
+  type: 'personal' | 'collaborative';
 }

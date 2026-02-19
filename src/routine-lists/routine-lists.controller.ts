@@ -8,6 +8,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import type { Request } from 'express';
 
+
 @ApiTags('routine-lists')
 @ApiBearerAuth('access-token')
 @Controller('routine-lists')
@@ -18,14 +19,14 @@ export class RoutineListsController {
   @Post()
   @ApiOperation({ summary: 'Create a new routine list' })
   create(@Body() createDto: CreateRoutineListDto, @Req() req: Request): Promise<RoutineList> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.routineListsService.create(createDto, userId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all routine lists for the current user' })
-  findAll(@Req() req: Request): Promise<RoutineList[]> {
-    const userId = (req.user as any).id;
+  async getMyLists(@Req() req: Request): Promise<RoutineList[]> {
+    const userId = req.user.id;
     return this.routineListsService.findAll(userId);
   }
 
@@ -36,14 +37,14 @@ export class RoutineListsController {
     @Body() updateDto: UpdateRoutineListDto,
     @Req() req: Request,
   ): Promise<RoutineList> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.routineListsService.update(+id, updateDto, userId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a routine list by ID' })
   remove(@Param('id') id: string, @Req() req: Request): Promise<{ message: string }> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.routineListsService.remove(+id, userId);
   }
 }
