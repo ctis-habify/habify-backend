@@ -82,6 +82,12 @@ export class UsersService {
     await this.usersRepo.save(user);
   }
 
+  // Permanently deletes the user's account
+  async deleteAccount(userId: string): Promise<void> {
+    const result = await this.usersRepo.delete(userId);
+    if (!result.affected) throw new NotFoundException('User not found');
+  }
+
   // Computes user's age from birthDate
   private computeAge(birthDate: Date | null): number | null {
     if (!birthDate) return null;

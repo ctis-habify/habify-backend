@@ -1,4 +1,14 @@
-import { Controller, Get, Patch, Body, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Delete,
+  Body,
+  Req,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -29,5 +39,14 @@ export class UsersController {
   ): Promise<ProfileResponseDto> {
     const userId = (req.user as any).id;
     return this.usersService.updateProfile(userId, dto);
+  }
+
+  // Permanently deletes the logged-in user's account
+  @UseGuards(AuthGuard)
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteAccount(@Req() req: Request): Promise<void> {
+    const userId = (req.user as any).id;
+    return this.usersService.deleteAccount(userId);
   }
 }
