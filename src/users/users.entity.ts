@@ -41,6 +41,9 @@ export class User {
   @Column({ name: 'total_xp', type: 'int', default: 0 })
   totalXp: number;
 
+  @Column({ name: 'avatar_url', type: 'varchar', nullable: true })
+  avatarUrl: string | null;
+
   @Column({ name: 'fcm_token', nullable: true })
   fcmToken: string;
 
