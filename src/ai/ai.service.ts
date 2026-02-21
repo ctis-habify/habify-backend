@@ -6,6 +6,7 @@ import {
   CLIPTextModelWithProjection,
   CLIPVisionModelWithProjection,
   Tensor,
+  PreTrainedTokenizer,
 } from '@xenova/transformers';
 
 export interface VerifyPayload {
@@ -28,7 +29,7 @@ export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
   private textModel: CLIPTextModelWithProjection | null = null;
   private visionModel: CLIPVisionModelWithProjection | null = null;
-  private tokenizer: any = null;
+  private tokenizer: PreTrainedTokenizer | null = null;
   private readonly threshold: number;
 
   constructor() {
@@ -47,11 +48,11 @@ export class AiService implements OnModuleInit {
   private async ensureModelsLoaded(): Promise<void> {
     if (this.textModel && this.visionModel && this.tokenizer) return;
 
-    this.logger.log(`[AI] Loading models: ${MODEL_ID}`);
+
     this.textModel = await CLIPTextModelWithProjection.from_pretrained(MODEL_ID);
     this.visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_ID);
     this.tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
-    this.logger.log('[AI] Models ready');
+
   }
 
   async verify(payload: VerifyPayload): Promise<VerifyResult> {
@@ -67,7 +68,7 @@ export class AiService implements OnModuleInit {
 
       const imgBuf = await this.downloadImageBuffer(payload.imageUrl);
       const imageInputs = await this.preprocessToPixelValuesFromBuffer(imgBuf);
-      const textInputs = await this.tokenizer([payload.text], {
+      const textInputs = await this.tokenizer!([payload.text], {
         padding: true,
         truncation: true,
         returnTensors: 'pt',

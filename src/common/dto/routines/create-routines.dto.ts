@@ -1,12 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsString, IsInt } from 'class-validator';
+import { IsBoolean, IsString, IsInt, IsOptional } from 'class-validator';
 
 export class CreateRoutineDto {
   @ApiProperty({
     example: '1',
   })
   @IsInt()
-  routineListId: number;
+  @IsOptional()
+  routineListId?: number;
 
   @ApiProperty({
     example: 'Sport Routine 1',
@@ -36,7 +37,8 @@ export class CreateRoutineDto {
     example: false,
   })
   @IsBoolean()
-  isAiVerified: boolean;
+  @IsOptional()
+  isAiVerified?: boolean;
 
   @ApiProperty({ example: '2025-10-10' })
   @IsString()

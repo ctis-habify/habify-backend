@@ -1,10 +1,5 @@
 import { Between } from 'typeorm';
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RoutineLog } from './routine-logs.entity';
@@ -16,6 +11,8 @@ import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class RoutineLogsService {
+  private readonly logger = new Logger(RoutineLogsService.name);
+
   constructor(
     @InjectRepository(RoutineLog)
     private readonly logsRepository: Repository<RoutineLog>,
@@ -55,7 +52,8 @@ export class RoutineLogsService {
       });
 
       if (!aiResult.verified) {
-        throw new ForbiddenException('Routine verification failed');
+        this.logger.warn(`Routine verification failed for user: ${userId}`);
+        throw new BadRequestException('Routine verification failed');
       }
 
       isVerified = aiResult.verified;
@@ -69,6 +67,8 @@ export class RoutineLogsService {
       userId,
     });
 
+
+
     const savedLog = await this.logsRepository.save(newLog);
 
     if (savedLog.isVerified) {
@@ -81,27 +81,25 @@ export class RoutineLogsService {
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
         if (routine.lastCompletedDate === yesterdayStr) {
-          console.log(
-            `Incrementing streak for Routine ${routine.id}: ${routine.streak} -> ${routine.streak + 1}`,
-          );
+
           routine.streak += 1;
         } else {
-          console.log(`Starting/Resetting streak for Routine ${routine.id} to 1`);
+
           routine.streak = 1;
         }
       }
 
-      console.log(`Updating Routine ${routine.id}: isAiVerified ${routine.isAiVerified} -> true`);
+
       routine.isAiVerified = true;
       routine.lastCompletedDate = today;
       await this.routinesRepository.save(routine);
 
       // 3. Award XP
-      const userBefore = await this.usersService.findById(userId);
-      console.log(`Awarding XP to User ${userId}: totalXp before ${userBefore?.totalXp}`);
+
+
       await this.xpLogsService.awardXP(userId, 10);
-      const userAfter = await this.usersService.findById(userId);
-      console.log(`Awarding XP to User ${userId}: totalXp after ${userAfter?.totalXp}`);
+
+
     }
 
     return savedLog;
