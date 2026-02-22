@@ -14,6 +14,7 @@ import { XpLogsModule } from './xp-logs/xp-logs.module';
 import { StorageModule } from './storage/storage.module';
 import { VerificationModule } from './verification/verification.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { FriendRequestsModule } from './friend-requests/friend-requests.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     StorageModule,
     VerificationModule,
     SchedulerModule,
+    FriendRequestsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

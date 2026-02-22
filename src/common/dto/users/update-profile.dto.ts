@@ -12,4 +12,10 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   avatarUrl?: string;
+
+  @ApiPropertyOptional({ example: 'sueda_akca', description: 'Unique username for friend search' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  username?: string;
 }

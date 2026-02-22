@@ -5,6 +5,7 @@ import {
   Delete,
   Body,
   Req,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -15,6 +16,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { ProfileResponseDto } from '../common/dto/users/profile-response.dto';
 import { UpdateProfileDto } from '../common/dto/users/update-profile.dto';
+import { UserSearchResultDto } from '../common/dto/users/user-search-result.dto';
 
 @ApiTags('users')
 @ApiBearerAuth('access-token')
@@ -28,6 +30,16 @@ export class UsersController {
   async getProfile(@Req() req: Request): Promise<ProfileResponseDto> {
     const userId = (req.user as any).id;
     return this.usersService.getProfile(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('search')
+  async searchUsers(
+    @Req() req: Request,
+    @Query('q') q: string = '',
+  ): Promise<UserSearchResultDto[]> {
+    const userId = (req.user as any).id;
+    return this.usersService.searchUsers(userId, q || '');
   }
 
   // Updates the logged-in user's profile fields (name, avatarUrl)

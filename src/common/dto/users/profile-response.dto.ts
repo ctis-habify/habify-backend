@@ -7,6 +7,9 @@ export class ProfileResponseDto {
   @ApiProperty({ example: 'Sueda Akça' })
   name: string;
 
+  @ApiPropertyOptional({ example: 'sueda_akca', nullable: true })
+  username: string | null;
+
   @ApiProperty({ example: 'sueda@example.com' })
   email: string;
 
