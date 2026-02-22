@@ -1,9 +1,16 @@
-import { Injectable, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FriendRequest, FriendRequestStatus } from './friend-requests.entity';
 import { UsersService } from '../users/users.service';
 import { SendFriendRequestDto } from '../common/dto/friend-requests/send-friend-request.dto';
+import { User } from '../users/users.entity';
+import { UserSearchResultDto } from '../common/dto/users/user-search-result.dto';
 
 @Injectable()
 export class FriendRequestsService {
@@ -50,7 +57,7 @@ export class FriendRequestsService {
 
   async getSentRequests(userId: string): Promise<FriendRequest[]> {
     return this.repo.find({
-      where: { fromUserId: userId },
+      where: { fromUserId: userId, status: FriendRequestStatus.pending },
       order: { createdAt: 'DESC' },
       relations: ['toUser'],
     });
@@ -61,6 +68,59 @@ export class FriendRequestsService {
       where: { toUserId: userId, status: FriendRequestStatus.pending },
       order: { createdAt: 'DESC' },
       relations: ['fromUser'],
+    });
+  }
+
+  async acceptRequest(requestId: string, userId: string): Promise<FriendRequest> {
+    const request = await this.repo.findOne({
+      where: { id: requestId },
+      relations: ['fromUser', 'toUser'],
+    });
+    if (!request) throw new NotFoundException('Friend request not found');
+    if (request.toUserId !== userId)
+      throw new BadRequestException('You can only accept requests sent to you');
+    if (request.status !== FriendRequestStatus.pending)
+      throw new BadRequestException('Request is no longer pending');
+    request.status = FriendRequestStatus.accepted;
+    return this.repo.save(request);
+  }
+
+  async declineRequest(requestId: string, userId: string): Promise<void> {
+    const request = await this.repo.findOne({ where: { id: requestId } });
+    if (!request) throw new NotFoundException('Friend request not found');
+    if (request.toUserId !== userId)
+      throw new BadRequestException('You can only decline requests sent to you');
+    if (request.status !== FriendRequestStatus.pending)
+      throw new BadRequestException('Request is no longer pending');
+    request.status = FriendRequestStatus.declined;
+    await this.repo.save(request);
+  }
+
+  /** Returns users who are friends (accepted request in either direction). */
+  async getFriends(userId: string): Promise<UserSearchResultDto[]> {
+    const accepted = await this.repo.find({
+      where: { status: FriendRequestStatus.accepted },
+      relations: ['fromUser', 'toUser'],
+    });
+    const friendIds = new Set<string>();
+    for (const fr of accepted) {
+      if (fr.fromUserId === userId) friendIds.add(fr.toUserId);
+      else if (fr.toUserId === userId) friendIds.add(fr.fromUserId);
+    }
+    if (friendIds.size === 0) return [];
+    const users = await this.repo.manager
+      .getRepository(User)
+      .createQueryBuilder('u')
+      .where('u.id IN (:...ids)', { ids: Array.from(friendIds) })
+      .getMany();
+    return users.map((u) => {
+      const dto = new UserSearchResultDto();
+      dto.id = u.id;
+      dto.name = u.name;
+      dto.username = u.username;
+      dto.avatarUrl = u.avatarUrl;
+      dto.totalXp = u.totalXp;
+      return dto;
     });
   }
 }
