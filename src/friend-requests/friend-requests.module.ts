@@ -10,5 +10,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [TypeOrmModule.forFeature([FriendRequest]), UsersModule, AuthModule],
   controllers: [FriendRequestsController],
   providers: [FriendRequestsService],
+  exports: [FriendRequestsService],
 })
 export class FriendRequestsModule {}
