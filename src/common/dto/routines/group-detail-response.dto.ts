@@ -2,7 +2,13 @@ import { ApiProperty } from '@nestjs/swagger';
 
 class ParticipantDto {
   @ApiProperty()
+  userId: string;
+
+  @ApiProperty()
   username: string;
+
+  @ApiProperty({ nullable: true })
+  avatarUrl: string | null;
 
   @ApiProperty()
   role: string;

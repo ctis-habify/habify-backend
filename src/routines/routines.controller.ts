@@ -31,7 +31,6 @@ import type { Request } from 'express';
 import { Routine } from './routines.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
 
-
 @ApiTags('routines')
 @ApiBearerAuth('access-token')
 @Controller('routines')
@@ -99,6 +98,17 @@ export class RoutinesController {
   @Get('group/:id')
   async getGroupDetail(@Param('id') id: string): Promise<GroupDetailResponseDto> {
     return this.routinesService.getGroupDetail(id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete('collaborative/:id/members/:userId')
+  async removeMember(
+    @Req() req: Request,
+    @Param('id') routineId: string,
+    @Param('userId') memberIdToRemove: string,
+  ): Promise<{ message: string }> {
+    const requesterId = (req.user as any).id;
+    return this.routinesService.removeMember(requesterId, routineId, memberIdToRemove);
   }
 
   // list grouped routines

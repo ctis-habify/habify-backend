@@ -1,23 +1,29 @@
-import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, LessThanOrEqual, type Repository } from 'typeorm';
-import { Routine } from './routines.entity';
-import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
-import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
 import { RoutineListItemDto } from 'src/common/dto/routines/routine-list-item.dto';
+import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
+import { Between, LessThanOrEqual, type Repository } from 'typeorm';
+import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
+import { Routine } from './routines.entity';
 
-import { Category } from 'src/categories/categories.entity';
-import { RoutineList } from 'src/routine-lists/routine-lists.entity';
-import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
-import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
-import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
-import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
 import { randomBytes } from 'crypto';
+import { Category } from 'src/categories/categories.entity';
 import { CreateCollaborativeRoutineDto } from 'src/common/dto/routines/create-collaborative-routine.dto';
-import { RoutineMember } from './routine-members.entity';
+import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
+import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
+import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
+import { RoutineList } from 'src/routine-lists/routine-lists.entity';
+import { Gender, User } from 'src/users/users.entity';
 import { UsersService } from 'src/users/users.service';
-import { Gender } from 'src/users/users.entity';
+import { RoutineLog } from '../routine-logs/routine-logs.entity';
+import { CollaborativeRoutine } from './collaborative-routines.entity';
+import { RoutineMember } from './routine-members.entity';
 
 @Injectable()
 export class RoutinesService {
@@ -39,6 +45,9 @@ export class RoutinesService {
 
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
+
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
 
     private readonly usersService: UsersService,
   ) {}
@@ -79,7 +88,6 @@ export class RoutinesService {
     });
 
     const saved = await this.routineRepo.save(routine);
-
 
     // Worker için ilk job
 
@@ -122,8 +130,6 @@ export class RoutinesService {
       missedCount: 0,
     });
     await this.memberRepo.save(creatorMember);
-
-
 
     return saved;
   }
@@ -240,12 +246,71 @@ export class RoutinesService {
       inviteKey: routine.collaborativeKey,
       memberCount: routine.members.length,
       participants: routine.members.map((m) => ({
+        userId: m.user.id,
         username: m.user.name,
+        avatarUrl: m.user.avatarUrl,
         role: m.role,
         streak: m.streak,
         joinedAt: m.joinedAt,
       })),
     };
+  }
+
+  async removeMember(
+    requesterId: string,
+    routineId: string,
+    memberIdOrUsernameToRemove: string,
+  ): Promise<{ message: string }> {
+    const routine = await this.collaborativeRoutineRepo.findOne({
+      where: { id: routineId },
+    });
+
+    if (!routine) {
+      throw new NotFoundException('Collaborative routine not found');
+    }
+
+    const requesterMembership = await this.memberRepo.findOne({
+      where: { collaborativeRoutineId: routineId, userId: requesterId },
+    });
+
+    if (!requesterMembership) {
+      throw new ForbiddenException('You are not a member of this routine');
+    }
+
+    // Resolve username to user ID if it's not a UUID
+    let targetUserId = memberIdOrUsernameToRemove;
+    if (!targetUserId.includes('-')) {
+      const targetUser = await this.userRepo.findOne({
+        where: { name: memberIdOrUsernameToRemove },
+      });
+      if (!targetUser) {
+        throw new NotFoundException('User with that name not found');
+      }
+      targetUserId = targetUser.id;
+    }
+
+    // Find the member to remove
+    const memberToRemove = await this.memberRepo.findOne({
+      where: { collaborativeRoutineId: routineId, userId: targetUserId },
+    });
+
+    if (!memberToRemove) {
+      throw new NotFoundException('User is not a member of this routine');
+    }
+
+    if (requesterId !== memberToRemove.userId && requesterMembership.role !== 'creator') {
+      throw new ForbiddenException('Only the creator can remove other members');
+    }
+
+    if (requesterId === memberToRemove.userId && requesterMembership.role === 'creator') {
+      throw new BadRequestException(
+        'The creator cannot leave the routine. Please delete the routine instead.',
+      );
+    }
+
+    await this.memberRepo.remove(memberToRemove);
+
+    return { message: 'Member removed successfully' };
   }
 
   // update routine
