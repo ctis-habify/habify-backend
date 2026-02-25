@@ -74,19 +74,23 @@ export class UsersService {
     dto.username = user.username;
     dto.email = user.email;
     dto.age = this.computeAge(user.birthDate);
+    dto.birthDate = user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null;
     dto.avatarUrl = user.avatarUrl;
     dto.totalXp = user.totalXp;
 
     return dto;
   }
 
-  // Updates profile fields (name, avatarUrl)
+  // Updates profile fields (name, avatarUrl, birthDate)
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<ProfileResponseDto> {
     const user = await this.findById(userId);
     if (!user) throw new NotFoundException('User not found');
 
     if (dto.name !== undefined) user.name = dto.name;
     if (dto.avatarUrl !== undefined) user.avatarUrl = dto.avatarUrl;
+    if (dto.birthDate !== undefined) {
+      user.birthDate = dto.birthDate ? new Date(dto.birthDate) : null;
+    }
     if (dto.username !== undefined) {
       const val = (dto.username && dto.username.trim()) || null;
       if (val) {

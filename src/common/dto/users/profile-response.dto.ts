@@ -16,6 +16,9 @@ export class ProfileResponseDto {
   @ApiPropertyOptional({ example: 23, nullable: true })
   age: number | null;
 
+  @ApiPropertyOptional({ example: '2000-05-15', nullable: true })
+  birthDate: string | null;
+
   @ApiPropertyOptional({ example: 'https://storage.example.com/avatar.jpg', nullable: true })
   avatarUrl: string | null;
 
