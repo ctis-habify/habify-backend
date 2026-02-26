@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { UserSearchResultDto } from './user-search-result.dto';
 
 export class ProfileResponseDto {
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
@@ -24,4 +25,7 @@ export class ProfileResponseDto {
 
   @ApiProperty({ example: 1250 })
   totalXp: number;
+
+  @ApiProperty({ type: [UserSearchResultDto] })
+  friends: UserSearchResultDto[];
 }
