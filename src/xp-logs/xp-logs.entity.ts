@@ -22,7 +22,7 @@ export class XpLog {
   @CreateDateColumn({ name: 'timestamp' })
   timestamp: Date;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
