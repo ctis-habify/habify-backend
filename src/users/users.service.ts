@@ -49,8 +49,9 @@ export class UsersService {
       const user = await this.usersRepo.findOne({ where: { id: q } });
       users = user && user.id !== currentUserId ? [user] : [];
     } else {
+      // İsim veya username yazdığın harfle başlayanları getir
       users = await this.usersRepo.find({
-        where: [{ username: ILike(`%${q}%`) }, { name: ILike(`%${q}%`) }],
+        where: [{ username: ILike(`${q}%`) }, { name: ILike(`${q}%`) }],
         take: 20,
       });
       users = users.filter((u) => u.id !== currentUserId);
