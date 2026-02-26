@@ -40,7 +40,7 @@ export class RoutineMember {
   @JoinColumn({ name: 'routine_id' })
   routine: CollaborativeRoutine;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 }
