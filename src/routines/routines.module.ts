@@ -8,11 +8,15 @@ import { RoutineList } from '../routine-lists/routine-lists.entity';
 import { User } from '../users/users.entity';
 import { Category } from '../categories/categories.entity';
 import { RoutineMember } from './routine-members.entity'; // Added this import
+import { CollaborativeChatMessage } from './collaborative-chat-message.entity'; // Added this import
+import { CollaborativeChatService } from './collaborative-chat.service'; // Added this import
 
+import { forwardRef } from '@nestjs/common';
 import { AuthModule } from 'src/auth/auth.module';
 import { RoutinesController } from './routines.controller';
 import { RoutinesService } from './routines.service';
 import { CollaborativeRoutineLogsService } from './collaborative-routine-logs.service';
+import { CollaborativeChatController } from './collaborative-chat.controller';
 
 import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
 import { AiService } from 'src/ai/ai.service';
@@ -26,7 +30,7 @@ import { DueReminder } from './due-reminders.entity';
 
 @Module({
   imports: [
-    AuthModule,
+    forwardRef(() => AuthModule),
     AiModule,
     StorageModule,
     XpLogsModule,
@@ -43,10 +47,16 @@ import { DueReminder } from './due-reminders.entity';
       Category,
       DueReminder,
       RoutineMember,
-    ]), // Added RoutineMember here
+      CollaborativeChatMessage,
+    ]),
   ],
-  controllers: [RoutinesController],
-  providers: [RoutinesService, CollaborativeRoutineLogsService, AiService],
+  controllers: [RoutinesController, CollaborativeChatController],
+  providers: [
+    RoutinesService,
+    CollaborativeChatService,
+    CollaborativeRoutineLogsService,
+    AiService,
+  ],
   exports: [RoutinesService, CollaborativeRoutineLogsService],
 })
 export class RoutinesModule {}
