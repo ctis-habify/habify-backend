@@ -26,6 +26,7 @@ import { CollaborativeRoutineLogsService } from './collaborative-routine-logs.se
 import { UsersService } from 'src/users/users.service';
 import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
 import { VerifyResult } from 'src/ai/ai.service';
+import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
 
 import type { Request } from 'express';
 import { Routine } from './routines.entity';
@@ -193,5 +194,12 @@ export class RoutinesController {
   async deleteRoutine(@Req() req: Request, @Param('id') id: string): Promise<{ message: string }> {
     const userId = req.user.id;
     return this.routinesService.deleteRoutine(userId, id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('collaborative/view')
+  async viewCollaborativeRoutines(@Req() req: Request): Promise<CollaborativeRoutineViewDto[]> {
+    const userId = (req.user as import('../auth/interfaces/jwt-payload.interface').JwtPayload).id;
+    return this.routinesService.viewCollaborativeRoutines(userId);
   }
 }

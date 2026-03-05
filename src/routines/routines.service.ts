@@ -11,6 +11,7 @@ import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
 import { Between, LessThanOrEqual, type Repository } from 'typeorm';
 import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { Routine } from './routines.entity';
+import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
 
 import { randomBytes } from 'crypto';
 import { Category } from 'src/categories/categories.entity';
@@ -575,5 +576,27 @@ export class RoutinesService {
       });
 
     return [...personalResults, ...collabResults];
+  }
+
+  async viewCollaborativeRoutines(userId: string): Promise<CollaborativeRoutineViewDto[]> {
+    // Find all collaborative routines where user is a member
+    const memberships = await this.memberRepo.find({
+      where: { userId },
+      relations: ['routine', 'routine.category', 'routine.members', 'routine.members.user'],
+    });
+    // Map to routine cards with required info
+    return memberships.map((m) => {
+      const routine = m.routine as CollaborativeRoutine;
+      return {
+        id: routine.id,
+        name: routine.routineName,
+        description: routine.description,
+        enrolledUsers: routine.members.map((member) => ({
+          userId: member.user.id,
+          username: member.user.name,
+          avatarUrl: member.user.avatarUrl,
+        })),
+      };
+    });
   }
 }

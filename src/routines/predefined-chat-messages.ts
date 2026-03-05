@@ -1,0 +1,23 @@
+export const PREDEFINED_CHAT_MESSAGES = [
+  'Let’s do our best today!',
+  'I completed my routine!',
+  'Don’t forget to check in!',
+  'Great job, everyone!',
+  'Can someone help me with this routine?',
+  'Let’s keep our streak going!',
+  'I might be late today.',
+  'Congratulations on your progress!',
+  'Let’s motivate each other!',
+  'I need some encouragement!',
+  // Funny, not completing messages
+  'Oops, my bed won the battle today! 🛏️',
+  'Routine? I thought you said “ruin” my plans!',
+  'I’m on a break... a very long one.',
+  'Does thinking about routines count as doing them?',
+  'I’ll start... tomorrow. Probably.',
+  'My coffee needs more coffee before I start.',
+  'I almost did it. Almost.',
+  'I’m just here for the chat.',
+  'If procrastination was a routine, I’d ace it!',
+  'I’m supporting you... from my couch!',
+];
