@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { RoutineListItemDto } from 'src/common/dto/routines/routine-list-item.dto';
 import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
-import { Between, LessThanOrEqual, type Repository } from 'typeorm';
+import { Between, ILike, LessThanOrEqual, type Repository } from 'typeorm';
 import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { Routine } from './routines.entity';
 import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
@@ -19,6 +19,7 @@ import { CreateCollaborativeRoutineDto } from 'src/common/dto/routines/create-co
 import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
 import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
+import { PublicCollaborativeRoutineResponseDto } from 'src/common/dto/routines/public-collaborative-routine-response.dto';
 import { RoutineList } from 'src/routine-lists/routine-lists.entity';
 import { Gender, User } from 'src/users/users.entity';
 import { UsersService } from 'src/users/users.service';
@@ -144,6 +145,57 @@ export class RoutinesService {
       throw new NotFoundException('Collaborative routine not found with this key');
     }
 
+    return this.checkAndCreateMembership(userId, routine);
+  }
+
+  async browsePublicRoutines(
+    userId: string,
+    search?: string,
+  ): Promise<PublicCollaborativeRoutineResponseDto[]> {
+    const routines = await this.collaborativeRoutineRepo.find({
+      where: {
+        isPublic: true,
+        ...(search ? { routineName: ILike(`%${search}%`) } : {}),
+      },
+      relations: ['category', 'members'],
+      order: { startDate: 'DESC' },
+    });
+
+    return routines
+      .filter((routine) => !(routine.members ?? []).some((m) => m.userId === userId))
+      .map((routine) => ({
+        id: routine.id,
+        routineName: routine.routineName,
+        description: routine.description ?? null,
+        category: routine.category?.name ?? null,
+        categoryId: routine.categoryId,
+        startDate: routine.startDate,
+        frequencyType: routine.frequencyType,
+        memberCount: routine.members?.length ?? 0,
+        isAlreadyMember: false,
+      }));
+  }
+
+  async joinPublicRoutine(userId: string, routineId: string): Promise<{ message: string }> {
+    const routine = await this.collaborativeRoutineRepo.findOne({
+      where: { id: routineId },
+    });
+
+    if (!routine) {
+      throw new NotFoundException('Collaborative routine not found');
+    }
+
+    if (!routine.isPublic) {
+      throw new BadRequestException('This routine is not public and cannot be joined this way');
+    }
+
+    return this.checkAndCreateMembership(userId, routine);
+  }
+
+  private async checkAndCreateMembership(
+    userId: string,
+    routine: CollaborativeRoutine,
+  ): Promise<{ message: string }> {
     // Check if already a member
     const existing = await this.memberRepo.findOne({
       where: { userId, collaborativeRoutineId: routine.id },

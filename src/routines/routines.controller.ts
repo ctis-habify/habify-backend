@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
 import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
+import { PublicCollaborativeRoutineResponseDto } from 'src/common/dto/routines/public-collaborative-routine-response.dto';
 import { AiService } from 'src/ai/ai.service';
 import { GcsService } from 'src/storage/gcs.service';
 import { XpLogsService } from 'src/xp-logs/xp-logs.service';
@@ -86,6 +88,26 @@ export class RoutinesController {
   ): Promise<{ message: string }> {
     const userId = req.user.id;
     return this.routinesService.joinRoutine(userId, body.key);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('collaborative/public')
+  async browsePublicRoutines(
+    @Req() req: Request,
+    @Query('search') search?: string,
+  ): Promise<PublicCollaborativeRoutineResponseDto[]> {
+    const userId = req.user.id;
+    return this.routinesService.browsePublicRoutines(userId, search);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('collaborative/:id/join')
+  async joinPublicRoutine(
+    @Req() req: Request,
+    @Param('id') routineId: string,
+  ): Promise<{ message: string }> {
+    const userId = req.user.id;
+    return this.routinesService.joinPublicRoutine(userId, routineId);
   }
 
   @UseGuards(AuthGuard)
