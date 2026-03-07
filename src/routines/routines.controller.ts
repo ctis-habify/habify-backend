@@ -111,6 +111,16 @@ export class RoutinesController {
   }
 
   @UseGuards(AuthGuard)
+  @Delete('collaborative/:id/leave')
+  async leaveRoutine(
+    @Req() req: Request,
+    @Param('id') routineId: string,
+  ): Promise<{ message: string }> {
+    const userId = (req.user as any).id;
+    return this.routinesService.removeMember(userId, routineId, userId);
+  }
+
+  @UseGuards(AuthGuard)
   @Get('collaborative')
   async getCollaborativeRoutines(@Req() req: Request): Promise<CollaborativeRoutine[]> {
     const userId = req.user.id;
