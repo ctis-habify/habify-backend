@@ -16,6 +16,7 @@ import { VerificationModule } from './verification/verification.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { FriendRequestsModule } from './friend-requests/friend-requests.module';
 import { RoutineInvitationsModule } from './routine-invitations/routine-invitations.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { RoutineInvitationsModule } from './routine-invitations/routine-invitati
     SchedulerModule,
     FriendRequestsModule,
     RoutineInvitationsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
