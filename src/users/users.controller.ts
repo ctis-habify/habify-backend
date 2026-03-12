@@ -28,7 +28,7 @@ export class UsersController {
   @UseGuards(AuthGuard)
   @Get('me')
   async getProfile(@Req() req: Request): Promise<ProfileResponseDto> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.usersService.getProfile(userId);
   }
 
@@ -38,7 +38,7 @@ export class UsersController {
     @Req() req: Request,
     @Query('q') q: string = '',
   ): Promise<UserSearchResultDto[]> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.usersService.searchUsers(userId, q || '');
   }
 
@@ -49,7 +49,7 @@ export class UsersController {
     @Req() req: Request,
     @Body() dto: UpdateProfileDto,
   ): Promise<ProfileResponseDto> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.usersService.updateProfile(userId, dto);
   }
 
@@ -58,7 +58,7 @@ export class UsersController {
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAccount(@Req() req: Request): Promise<void> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.usersService.deleteAccount(userId);
   }
 }

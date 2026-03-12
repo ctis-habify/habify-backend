@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CollaborativeChatService } from './collaborative-chat.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { Request } from 'express';
+import { CollaborativeChatMessage } from './collaborative-chat-message.entity';
 
 @ApiTags('routines')
 @ApiBearerAuth('access-token')
@@ -12,14 +13,13 @@ export class CollaborativeChatController {
 
   @UseGuards(AuthGuard)
   @Get('predefined')
-  getPredefinedMessages(@Req() req: Request) {
-    console.log('Authorization header:', req.headers.authorization);
+  getPredefinedMessages(): string[] {
     return this.chatService.getPredefinedMessages();
   }
 
   @UseGuards(AuthGuard)
   @Get(':routineId')
-  async getMessages(@Param('routineId') routineId: string) {
+  async getMessages(@Param('routineId') routineId: string): Promise<CollaborativeChatMessage[]> {
     return this.chatService.getMessages(routineId);
   }
 
@@ -29,8 +29,8 @@ export class CollaborativeChatController {
     @Param('routineId') routineId: string,
     @Req() req: Request,
     @Body('message') message: string,
-  ) {
-    const userId = (req.user as any).id;
+  ): Promise<CollaborativeChatMessage> {
+    const userId = req.user.id;
     return this.chatService.sendMessage(routineId, userId, message);
   }
 }

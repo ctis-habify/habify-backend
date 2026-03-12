@@ -18,7 +18,7 @@ export class RoutineInvitationsController {
     @Req() req: Request,
     @Body() dto: SendRoutineInvitationDto,
   ): Promise<RoutineInvitationResponseDto> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     const invitation = await this.invitationsService.sendInvitation(userId, dto);
     // Re-fetch with relations so the response includes names
     const received = await this.invitationsService.getSentInvitations(userId);
@@ -28,14 +28,14 @@ export class RoutineInvitationsController {
   @UseGuards(AuthGuard)
   @Get('received')
   async getReceivedInvitations(@Req() req: Request): Promise<RoutineInvitationResponseDto[]> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.invitationsService.getReceivedInvitations(userId);
   }
 
   @UseGuards(AuthGuard)
   @Get('sent')
   async getSentInvitations(@Req() req: Request): Promise<RoutineInvitationResponseDto[]> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.invitationsService.getSentInvitations(userId);
   }
 
@@ -45,7 +45,7 @@ export class RoutineInvitationsController {
     @Req() req: Request,
     @Param('id') id: string,
   ): Promise<RoutineInvitationResponseDto> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.invitationsService.acceptInvitation(id, userId);
   }
 
@@ -55,7 +55,7 @@ export class RoutineInvitationsController {
     @Req() req: Request,
     @Param('id') id: string,
   ): Promise<{ message: string }> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.invitationsService.declineInvitation(id, userId);
   }
 }

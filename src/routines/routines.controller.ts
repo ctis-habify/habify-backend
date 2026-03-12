@@ -95,9 +95,11 @@ export class RoutinesController {
   async browsePublicRoutines(
     @Req() req: Request,
     @Query('search') search?: string,
+    @Query('categoryId') categoryId?: number,
+    @Query('frequencyType') frequencyType?: string,
   ): Promise<PublicCollaborativeRoutineResponseDto[]> {
     const userId = req.user.id;
-    return this.routinesService.browsePublicRoutines(userId, search);
+    return this.routinesService.browsePublicRoutines(userId, search, categoryId, frequencyType);
   }
 
   @UseGuards(AuthGuard)
@@ -116,7 +118,7 @@ export class RoutinesController {
     @Req() req: Request,
     @Param('id') routineId: string,
   ): Promise<{ message: string }> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.routinesService.removeMember(userId, routineId, userId);
   }
 
@@ -140,7 +142,7 @@ export class RoutinesController {
     @Param('id') routineId: string,
     @Param('userId') memberIdToRemove: string,
   ): Promise<{ message: string }> {
-    const requesterId = (req.user as any).id;
+    const requesterId = req.user.id;
     return this.routinesService.removeMember(requesterId, routineId, memberIdToRemove);
   }
 

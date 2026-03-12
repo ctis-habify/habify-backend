@@ -151,11 +151,15 @@ export class RoutinesService {
   async browsePublicRoutines(
     userId: string,
     search?: string,
+    categoryId?: number,
+    frequencyType?: string,
   ): Promise<PublicCollaborativeRoutineResponseDto[]> {
     const routines = await this.collaborativeRoutineRepo.find({
       where: {
         isPublic: true,
         ...(search ? { routineName: ILike(`%${search}%`) } : {}),
+        ...(categoryId ? { categoryId } : {}),
+        ...(frequencyType ? { frequencyType } : {}),
       },
       relations: ['category', 'members'],
       order: { startDate: 'DESC' },
