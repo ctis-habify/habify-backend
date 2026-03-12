@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Patch,
   Post,
@@ -64,6 +65,14 @@ export class NotificationsController {
   async markAllAsRead(@Req() req: Request) {
     const userId = (req.user as JwtPayload).id;
     await this.notificationsService.markAllAsRead(userId);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a notification' })
+  async deleteNotification(@Req() req: Request, @Param('id') id: string) {
+    const userId = (req.user as JwtPayload).id;
+    await this.notificationsService.deleteNotification(userId, id);
   }
 
   @Post('push-token')

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RoutineInvitation } from './routine-invitations.entity';
 import { RoutineInvitationsService } from './routine-invitations.service';
@@ -8,6 +8,7 @@ import { RoutineMember } from '../routines/routine-members.entity';
 import { FriendRequestsModule } from '../friend-requests/friend-requests.module';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { AuthModule } from '../auth/auth.module';
     FriendRequestsModule,
     UsersModule,
     AuthModule,
+    forwardRef(() => NotificationsModule),
   ],
   controllers: [RoutineInvitationsController],
   providers: [RoutineInvitationsService],

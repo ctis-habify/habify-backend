@@ -1,9 +1,11 @@
 import {
   Injectable,
+  Inject,
   BadRequestException,
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,6 +14,7 @@ import { CollaborativeRoutine } from '../routines/collaborative-routines.entity'
 import { RoutineMember } from '../routines/routine-members.entity';
 import { FriendRequestsService } from '../friend-requests/friend-requests.service';
 import { UsersService } from '../users/users.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { SendRoutineInvitationDto } from '../common/dto/routine-invitations/send-routine-invitation.dto';
 import { RoutineInvitationResponseDto } from '../common/dto/routine-invitations/routine-invitation-response.dto';
 
@@ -29,6 +32,8 @@ export class RoutineInvitationsService {
 
     private readonly friendRequestsService: FriendRequestsService,
     private readonly usersService: UsersService,
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async sendInvitation(
@@ -90,7 +95,21 @@ export class RoutineInvitationsService {
       status: RoutineInvitationStatus.pending,
     });
 
-    return this.invitationRepo.save(invitation);
+    const saved = await this.invitationRepo.save(invitation);
+
+    const fromUser = await this.usersService.findById(fromUserId);
+    const senderName = fromUser?.name ?? 'Someone';
+    this.notificationsService
+      .createAndPush({
+        userId: toUserId,
+        type: 'routine_invitation',
+        title: 'Routine Invitation',
+        body: `${senderName} invited you to join "${routine.routineName}".`,
+        collaborativeRoutineId: routineId,
+      })
+      .catch(() => {});
+
+    return saved;
   }
 
   async getReceivedInvitations(userId: string): Promise<RoutineInvitationResponseDto[]> {

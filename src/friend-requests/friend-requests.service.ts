@@ -1,13 +1,16 @@
 import {
   Injectable,
+  Inject,
   ConflictException,
   BadRequestException,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FriendRequest, FriendRequestStatus } from './friend-requests.entity';
 import { UsersService } from '../users/users.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { SendFriendRequestDto } from '../common/dto/friend-requests/send-friend-request.dto';
 import { User } from '../users/users.entity';
 import { UserSearchResultDto } from '../common/dto/users/user-search-result.dto';
@@ -18,6 +21,8 @@ export class FriendRequestsService {
     @InjectRepository(FriendRequest)
     private readonly repo: Repository<FriendRequest>,
     private readonly usersService: UsersService,
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async sendRequest(fromUserId: string, dto: SendFriendRequestDto): Promise<FriendRequest> {
@@ -52,7 +57,20 @@ export class FriendRequestsService {
       toUserId,
       status: FriendRequestStatus.pending,
     });
-    return this.repo.save(request);
+    const saved = await this.repo.save(request);
+
+    const fromUser = await this.usersService.findById(fromUserId);
+    const senderName = fromUser?.name ?? 'Someone';
+    this.notificationsService
+      .createAndPush({
+        userId: toUserId,
+        type: 'friend_request',
+        title: 'Friend Request',
+        body: `${senderName} sent you a friend request.`,
+      })
+      .catch(() => {});
+
+    return saved;
   }
 
   async getSentRequests(userId: string): Promise<FriendRequest[]> {
