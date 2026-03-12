@@ -19,42 +19,42 @@ export class FriendRequestsController {
     @Req() req: Request,
     @Body() dto: SendFriendRequestDto,
   ): Promise<FriendRequest> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.friendRequestsService.sendRequest(userId, dto);
   }
 
   @UseGuards(AuthGuard)
   @Get('sent')
   async getSentRequests(@Req() req: Request): Promise<FriendRequest[]> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.friendRequestsService.getSentRequests(userId);
   }
 
   @UseGuards(AuthGuard)
   @Get('received')
   async getReceivedRequests(@Req() req: Request): Promise<FriendRequest[]> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.friendRequestsService.getReceivedRequests(userId);
   }
 
   @UseGuards(AuthGuard)
   @Get('friends')
   async getFriends(@Req() req: Request): Promise<UserSearchResultDto[]> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.friendRequestsService.getFriends(userId);
   }
 
   @UseGuards(AuthGuard)
   @Patch(':id/accept')
   async acceptRequest(@Req() req: Request, @Param('id') id: string): Promise<FriendRequest> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     return this.friendRequestsService.acceptRequest(id, userId);
   }
 
   @UseGuards(AuthGuard)
   @Patch(':id/decline')
   async declineRequest(@Req() req: Request, @Param('id') id: string): Promise<{ message: string }> {
-    const userId = (req.user as any).id;
+    const userId = req.user.id;
     await this.friendRequestsService.declineRequest(id, userId);
     return { message: 'Request declined' };
   }

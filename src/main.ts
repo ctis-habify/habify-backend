@@ -4,6 +4,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as dotenv from 'dotenv';
 
+dotenv.config();
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
@@ -36,4 +38,3 @@ async function bootstrap(): Promise<void> {
   await app.listen(3000);
 }
 bootstrap();
-dotenv.config();
