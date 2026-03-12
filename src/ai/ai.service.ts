@@ -1,12 +1,12 @@
 import { Injectable, Logger, ServiceUnavailableException, OnModuleInit } from '@nestjs/common';
 import axios from 'axios';
 import sharp from 'sharp';
-import {
-  AutoTokenizer,
+import type {
   CLIPTextModelWithProjection,
   CLIPVisionModelWithProjection,
-  Tensor,
   PreTrainedTokenizer,
+  Tensor,
+  AutoTokenizer,
 } from '@xenova/transformers';
 
 export interface VerifyPayload {
@@ -24,12 +24,22 @@ const STD = [0.26862954, 0.26130258, 0.27577711];
 const INPUT_SIZE = 224;
 const MODEL_ID = 'Xenova/clip-vit-base-patch32';
 
+/* eslint-disable @typescript-eslint/naming-convention */
+interface TransformersModule {
+  AutoTokenizer: typeof AutoTokenizer;
+  CLIPTextModelWithProjection: typeof CLIPTextModelWithProjection;
+  CLIPVisionModelWithProjection: typeof CLIPVisionModelWithProjection;
+  Tensor: typeof Tensor;
+}
+/* eslint-enable @typescript-eslint/naming-convention */
+
 @Injectable()
 export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
   private textModel: CLIPTextModelWithProjection | null = null;
   private visionModel: CLIPVisionModelWithProjection | null = null;
   private tokenizer: PreTrainedTokenizer | null = null;
+  private tensorClass: typeof Tensor | null = null;
   private readonly threshold: number;
 
   constructor() {
@@ -48,11 +58,17 @@ export class AiService implements OnModuleInit {
   private async ensureModelsLoaded(): Promise<void> {
     if (this.textModel && this.visionModel && this.tokenizer) return;
 
+    const {
+      AutoTokenizer: autoTokenizerClass,
+      CLIPTextModelWithProjection: textModelClass,
+      CLIPVisionModelWithProjection: visionModelClass,
+      Tensor: tensorClass,
+    } = (await eval('import("@xenova/transformers")')) as TransformersModule;
 
-    this.textModel = await CLIPTextModelWithProjection.from_pretrained(MODEL_ID);
-    this.visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_ID);
-    this.tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
-
+    this.tensorClass = tensorClass;
+    this.textModel = await textModelClass.from_pretrained(MODEL_ID);
+    this.visionModel = await visionModelClass.from_pretrained(MODEL_ID);
+    this.tokenizer = await autoTokenizerClass.from_pretrained(MODEL_ID);
   }
 
   async verify(payload: VerifyPayload): Promise<VerifyResult> {
@@ -133,7 +149,7 @@ export class AiService implements OnModuleInit {
       }
     }
 
-    return { pixelValues: new Tensor('float32', out, [1, 3, H, W]) };
+    return { pixelValues: new this.tensorClass!('float32', out, [1, 3, H, W]) };
   }
 
   private l2NormalizeFloat32(arr: Float32Array): Float32Array {

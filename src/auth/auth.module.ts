@@ -10,7 +10,7 @@ import { JwtStrategy } from './jwt.strategy';
     forwardRef(() => UsersModule), // used to access user-related operations inside AuthService
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'dev_secret_jwtkey_hbfy', // JWT signing key
-      signOptions: { expiresIn: '7d' }, // token validity period
+      signOptions: { expiresIn: '30d' }, // token validity period
     }),
   ],
   controllers: [AuthController], // handles /auth routes
