@@ -399,17 +399,28 @@ export class RoutinesService {
   }
 
   async deleteRoutine(userId: string, routineId: string): Promise<{ message: string }> {
-    const found = await this.routineRepo.findOne({
-      where: {
-        userId: userId,
-        id: routineId,
-      },
+    // 1. Try to find and delete personal routine
+    const personalRoutine = await this.routineRepo.findOne({
+      where: { userId, id: routineId },
     });
-    if (!found) {
-      return { message: 'ROUTINE IS NOT FOUND!' };
+
+    if (personalRoutine) {
+      await this.routineRepo.delete(routineId);
+      return { message: 'ROUTINE IS DELETED SUCCESSFULLY' };
     }
-    await this.routineRepo.delete(routineId);
-    return { message: 'ROUTINE IS DELETED SUCCESSFULLY' };
+
+    // 2. Try to find and delete collaborative routine (if user is creator)
+    const collabRoutine = await this.collaborativeRoutineRepo.findOne({
+      where: { id: routineId, creatorId: userId },
+    });
+
+    if (collabRoutine) {
+      await this.collaborativeRoutineRepo.delete(routineId);
+      return { message: 'ROUTINE IS DELETED SUCCESSFULLY' };
+    }
+
+    // 3. If not found in either or not authorized, throw NotFoundException
+    throw new NotFoundException('Routine not found or you do not have permission to delete it');
   }
 
   async getAllRoutinesByList(userId: string): Promise<RoutineListWithRoutinesDto[]> {
