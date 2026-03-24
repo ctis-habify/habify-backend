@@ -94,10 +94,10 @@ export class NotificationsService {
 
     const rows: Notification[] = await this.notificationRepo.query(
       `INSERT INTO notifications (user_id, routine_id, type, title, body, push_sent, is_read)
-       SELECT $1, $2, $3, $4, $5, false, false
+       SELECT $1::uuid, $2::uuid, $3::varchar, $4, $5, false, false
        WHERE NOT EXISTS (
          SELECT 1 FROM notifications
-         WHERE user_id = $1 AND routine_id = $2 AND type = $3
+         WHERE user_id = $1::uuid AND routine_id = $2::uuid AND type = $3::varchar
            AND created_at > NOW() - INTERVAL '29 minutes'
        )
        RETURNING *`,
@@ -127,10 +127,10 @@ export class NotificationsService {
 
     const rows: Notification[] = await this.notificationRepo.query(
       `INSERT INTO notifications (user_id, collaborative_routine_id, type, title, body, push_sent, is_read)
-       SELECT $1, $2, $3, $4, $5, false, false
+       SELECT $1::uuid, $2::uuid, $3::varchar, $4, $5, false, false
        WHERE NOT EXISTS (
          SELECT 1 FROM notifications
-         WHERE user_id = $1 AND collaborative_routine_id = $2 AND type = $3
+         WHERE user_id = $1::uuid AND collaborative_routine_id = $2::uuid AND type = $3::varchar
            AND created_at > NOW() - INTERVAL '29 minutes'
        )
        RETURNING *`,

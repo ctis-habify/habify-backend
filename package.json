@@ -7,7 +7,7 @@
   "scripts": {
     "build": "npx swc src -d dist --copy-files",
     "start": "node dist/src/main",
-    "start:dev": "nodemon --watch src --ext ts --exec \"npx swc src -d dist --copy-files && node dist/src/main.js\"",
+    "start:dev": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true && nodemon --watch src --ext ts --exec \"npx swc src -d dist --copy-files && node dist/src/main.js\"",
     "start:dev:nest": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main",

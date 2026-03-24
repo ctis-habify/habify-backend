@@ -39,7 +39,6 @@ export class RoutineStatusProcessor {
     await this.cache.set(cacheKey, status);
 
     if (isDone) {
-
       return;
     }
 
@@ -54,8 +53,6 @@ export class RoutineStatusProcessor {
     } else {
       nextIntervalMinutes = 10;
     }
-
-
 
     await job.queue.add(
       'updateRoutineStatus',

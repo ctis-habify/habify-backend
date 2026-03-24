@@ -8,7 +8,6 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import type { Request } from 'express';
 
-
 @ApiTags('routine-lists')
 @ApiBearerAuth('access-token')
 @Controller('routine-lists')

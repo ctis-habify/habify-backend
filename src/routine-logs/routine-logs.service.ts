@@ -67,8 +67,6 @@ export class RoutineLogsService {
       userId,
     });
 
-
-
     const savedLog = await this.logsRepository.save(newLog);
 
     if (savedLog.isVerified) {
@@ -81,14 +79,11 @@ export class RoutineLogsService {
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
         if (routine.lastCompletedDate === yesterdayStr) {
-
           routine.streak += 1;
         } else {
-
           routine.streak = 1;
         }
       }
-
 
       routine.isAiVerified = true;
       routine.lastCompletedDate = today;
@@ -96,10 +91,7 @@ export class RoutineLogsService {
 
       // 3. Award XP
 
-
       await this.xpLogsService.awardXP(userId, 10);
-
-
     }
 
     return savedLog;

@@ -8,7 +8,6 @@ import { VerificationRequestDto } from '../common/dto/verification/verification-
 
 import type { Request } from 'express';
 
-
 @ApiTags('verification')
 @ApiBearerAuth('access-token')
 @Controller('verify')

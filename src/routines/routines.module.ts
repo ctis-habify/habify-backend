@@ -25,6 +25,7 @@ import { StorageModule } from 'src/storage/storage.module';
 import { XpLogsModule } from 'src/xp-logs/xp-logs.module';
 import { RoutineLogsModule } from 'src/routine-logs/routine-logs.module';
 import { UsersModule } from 'src/users/users.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 import { DueReminder } from './due-reminders.entity';
 
@@ -36,6 +37,7 @@ import { DueReminder } from './due-reminders.entity';
     XpLogsModule,
     RoutineLogsModule,
     UsersModule,
+    NotificationsModule,
     // TypeORM repository'ler
     TypeOrmModule.forFeature([
       Routine,

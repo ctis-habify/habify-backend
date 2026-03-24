@@ -17,6 +17,7 @@ export interface VerifyPayload {
 export interface VerifyResult {
   score: number;
   verified: boolean;
+  pending?: boolean;
 }
 
 const MEAN = [0.48145466, 0.4578275, 0.40821073];
@@ -119,7 +120,8 @@ export class AiService implements OnModuleInit {
   private async preprocessToPixelValuesFromBuffer(
     buf: Buffer,
     size = INPUT_SIZE,
-  ): Promise<{ pixelValues: Tensor }> {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+  ): Promise<{ pixel_values: Tensor }> {
     const { data: raw, info } = await sharp(buf)
       .removeAlpha()
       .resize(size, size, { fit: 'cover', position: 'centre' })
@@ -149,7 +151,8 @@ export class AiService implements OnModuleInit {
       }
     }
 
-    return { pixelValues: new this.tensorClass!('float32', out, [1, 3, H, W]) };
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    return { pixel_values: new this.tensorClass!('float32', out, [1, 3, H, W]) };
   }
 
   private l2NormalizeFloat32(arr: Float32Array): Float32Array {

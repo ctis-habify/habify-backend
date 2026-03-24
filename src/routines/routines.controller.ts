@@ -177,14 +177,19 @@ export class RoutinesController {
 
     if (!routine) throw new NotFoundException('Routine group or personal routine not found');
 
+    if (isCollab) {
+      await this.collaborativeLogs.create(body.routineId, body.objectPath, userId);
+      return { score: 1, verified: false, pending: true };
+    }
+
     const routineText = routine.routineName;
     const signedReadUrl = await this.gcs.getSignedReadUrl(body.objectPath, 600);
     const aiResult = await this.ai.verify({ imageUrl: signedReadUrl, text: routineText });
 
-    if (isCollab) {
-      await this.collaborativeLogs.create(body.routineId, body.objectPath, userId);
-    } else {
-      await this.routineLogs.create(body.routineId, body.objectPath, userId);
+    if (aiResult.verified) {
+      await this.routineLogs.create(body.routineId, body.objectPath, userId, {
+        preverified: true,
+      });
     }
 
     return aiResult;
@@ -202,12 +207,62 @@ export class RoutinesController {
     };
   }
 
+  @UseGuards(AuthGuard)
+  @Get('collaborative/view')
+  async viewCollaborativeRoutines(@Req() req: Request): Promise<CollaborativeRoutineViewDto[]> {
+    const userId = (req.user as import('../auth/interfaces/jwt-payload.interface').JwtPayload).id;
+    return this.routinesService.viewCollaborativeRoutines(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('collaborative/pending-logs')
+  async getPendingVerifications(@Req() req: Request) {
+    const userId = (req.user as import('../auth/interfaces/jwt-payload.interface').JwtPayload).id;
+    return this.collaborativeLogs.getPendingVerifications(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('collaborative/:id/logs')
+  async getCollaborativeLogs(@Param('id') id: string) {
+    return this.collaborativeLogs.getLogsByRoutine(id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get(':id/logs')
+  async getAnyRoutineLogs(@Param('id') id: string, @Req() req: Request) {
+    const userId = req.user.id;
+    // Check if it's a collaborative routine
+    const collabRoutine = await this.routinesService.getCollaborativeRoutineById(id);
+    if (collabRoutine) {
+      return this.collaborativeLogs.getLogsByRoutine(id);
+    }
+    // Otherwise try personal
+    return this.routineLogs.listLogs(id, userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('collaborative/logs/:logId/verify')
+  async verifyCollaborativeLog(
+    @Req() req: Request,
+    @Param('logId') logId: number,
+    @Body() body: { status: 'approved' | 'rejected' },
+  ) {
+    const userId = (req.user as import('../auth/interfaces/jwt-payload.interface').JwtPayload).id;
+    return this.collaborativeLogs.verifyLog(userId, logId, body.status);
+  }
+
   // Get routine by id
   @UseGuards(AuthGuard)
   @Get(':id')
-  async getRoutineById(@Req() req: Request, @Param('id') id: string): Promise<Routine | null> {
+  async getRoutineById(
+    @Req() req: Request,
+    @Param('id') id: string,
+  ): Promise<Routine | CollaborativeRoutine | null> {
     const userId = req.user.id;
-    return this.routinesService.getRoutineById(userId, id);
+    const routine = await this.routinesService.getRoutineById(userId, id);
+    if (routine) return routine;
+
+    return this.routinesService.getCollaborativeRoutineById(id);
   }
 
   // update routine
@@ -228,12 +283,5 @@ export class RoutinesController {
   async deleteRoutine(@Req() req: Request, @Param('id') id: string): Promise<{ message: string }> {
     const userId = req.user.id;
     return this.routinesService.deleteRoutine(userId, id);
-  }
-
-  @UseGuards(AuthGuard)
-  @Get('collaborative/view')
-  async viewCollaborativeRoutines(@Req() req: Request): Promise<CollaborativeRoutineViewDto[]> {
-    const userId = (req.user as import('../auth/interfaces/jwt-payload.interface').JwtPayload).id;
-    return this.routinesService.viewCollaborativeRoutines(userId);
   }
 }

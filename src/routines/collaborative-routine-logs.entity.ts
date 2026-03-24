@@ -22,12 +22,21 @@ export class CollaborativeRoutineLog {
   @Column({ name: 'verification_image_url', nullable: true })
   verificationImageUrl: string;
 
+  @Column({ type: 'varchar', default: 'pending' })
+  status: 'pending' | 'approved' | 'rejected';
+
   @ManyToOne(() => CollaborativeRoutine, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'collaborative_routine_id' })
   routine: CollaborativeRoutine;
 
   @Column({ name: 'user_id' })
   userId: string;
+
+  @Column('text', { array: true, default: '{}' })
+  approvals: string[];
+
+  @Column('text', { array: true, default: '{}' })
+  rejections: string[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
