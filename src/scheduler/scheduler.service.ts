@@ -11,9 +11,7 @@ export class SchedulerService implements OnModuleInit {
 
   constructor(private readonly dataSource: DataSource) {}
 
-  async onModuleInit(): Promise<void> {
-
-  }
+  async onModuleInit(): Promise<void> {}
 
   getEventsObservable(): Observable<{ type: string; timestamp: string }> {
     return this.events$.asObservable();
@@ -22,7 +20,6 @@ export class SchedulerService implements OnModuleInit {
   // Her gece 00:00'da çalışır
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleDailyRollup(): Promise<void> {
-
     try {
       // job_daily_rollup parametre alıyor ama varsayılanı (current_date - 1).
       // Bu yüzden direkt çağırabiliriz.
@@ -40,7 +37,6 @@ export class SchedulerService implements OnModuleInit {
   // Her 5 dakikada bir çalışır
   @Cron('0 */5 * * * *')
   async handleReminderScan(): Promise<void> {
-
     try {
       await this.dataSource.query('SELECT job_reminder_scan();');
       // this.logger.log('job_reminder_scan completed.'); // Reduce logs if frequent

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bull';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -29,6 +30,12 @@ import { NotificationsModule } from './notifications/notifications.module';
       ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
       autoLoadEntities: true,
       synchronize: true,
+    }),
+    BullModule.forRoot({
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
     }),
 
     AuthModule,

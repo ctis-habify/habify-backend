@@ -4,8 +4,6 @@ import { AuthGuard } from '../auth/auth.guard';
 import { GcsService } from './gcs.service';
 import { CreateSignedUrlDto } from '../common/dto/storage/create-signed-url.dto';
 
-
-
 @Controller('uploads')
 export class UploadsController {
   constructor(private readonly gcs: GcsService) {}

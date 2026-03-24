@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RoutineLogsService } from './routine-logs.service';
 import { RoutineLogsController } from './routine-logs.controller';
@@ -9,6 +9,7 @@ import { XpLogsModule } from '../xp-logs/xp-logs.module';
 import { StorageModule } from 'src/storage/storage.module';
 import { AiModule } from 'src/ai/ai.module';
 import { UsersModule } from 'src/users/users.module';
+import { RoutinesModule } from '../routines/routines.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UsersModule } from 'src/users/users.module';
     StorageModule,
     AiModule,
     UsersModule,
+    forwardRef(() => RoutinesModule),
   ],
   controllers: [RoutineLogsController],
   providers: [RoutineLogsService],

@@ -7,11 +7,18 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { RoutineLog } from './routine-logs.entity';
 
+import { CollaborativeRoutineLogsService } from '../routines/collaborative-routine-logs.service';
+import { RoutinesService } from '../routines/routines.service';
+
 @ApiBearerAuth('access-token')
 @Controller('routine-logs')
 @UseGuards(AuthGuard)
 export class RoutineLogsController {
-  constructor(private readonly logsService: RoutineLogsService) {}
+  constructor(
+    private readonly logsService: RoutineLogsService,
+    private readonly collaborativeLogs: CollaborativeRoutineLogsService,
+    private readonly routinesService: RoutinesService,
+  ) {}
 
   @Post()
   create(@Body() createLogDto: CreateRoutineLogDto, @Req() req: Request): Promise<RoutineLog> {
