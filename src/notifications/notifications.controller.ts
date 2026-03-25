@@ -18,6 +18,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { NotificationsService } from './notifications.service';
 import { RegisterPushTokenDto } from '../common/dto/notifications/register-push-token.dto';
+import { SendPokeDto } from '../common/dto/pokes/send-poke.dto';
 
 @ApiTags('notifications')
 @ApiBearerAuth('access-token')
@@ -89,6 +90,13 @@ export class NotificationsController {
   async removePushToken(@Req() req: Request) {
     const userId = (req.user as JwtPayload).id;
     await this.notificationsService.removePushToken(userId);
+  }
+
+  @Post('poke')
+  @ApiOperation({ summary: 'Send a poke to a collaborative routine co-member' })
+  async sendPoke(@Req() req: Request, @Body() dto: SendPokeDto) {
+    const userId = (req.user as JwtPayload).id;
+    return this.notificationsService.sendPoke(userId, dto);
   }
 
   @Post('test-scan')

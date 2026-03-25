@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
 import { Between, Repository } from 'typeorm';
@@ -11,6 +11,7 @@ import { CollaborativeRoutine } from '../routines/collaborative-routines.entity'
 import { RoutineMember } from '../routines/routine-members.entity';
 import { CollaborativeRoutineLog } from '../routines/collaborative-routine-logs.entity';
 import { User } from '../users/users.entity';
+import { SendPokeDto } from '../common/dto/pokes/send-poke.dto';
 
 @Injectable()
 export class NotificationsService {
@@ -352,6 +353,82 @@ export class NotificationsService {
       return mins > 0 ? `${hours}h ${mins}m` : `${hours} hour${hours > 1 ? 's' : ''}`;
     }
     return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  }
+
+  async sendPoke(fromUserId: string, dto: SendPokeDto): Promise<{ message: string }> {
+    const { toUserId, collaborativeRoutineId } = dto;
+
+    if (fromUserId === toUserId) {
+      throw new BadRequestException('Cannot poke yourself');
+    }
+
+    // Verify target user exists
+    const toUser = await this.userRepo.findOne({ where: { id: toUserId } });
+    if (!toUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Verify the collaborative routine exists
+    const routine = await this.collabRoutineRepo.findOne({
+      where: { id: collaborativeRoutineId },
+    });
+    if (!routine) {
+      throw new NotFoundException('Collaborative routine not found');
+    }
+
+    // Verify both users are members of the routine
+    const senderMember = await this.memberRepo.findOne({
+      where: { collaborativeRoutineId, userId: fromUserId },
+    });
+    if (!senderMember) {
+      throw new BadRequestException('You are not a member of this routine');
+    }
+
+    const targetMember = await this.memberRepo.findOne({
+      where: { collaborativeRoutineId, userId: toUserId },
+    });
+    if (!targetMember) {
+      throw new BadRequestException('Target user is not a member of this routine');
+    }
+
+    // Rate-limit: prevent duplicate pokes within 10 minutes
+    const recentPoke = await this.notificationRepo
+      .createQueryBuilder('n')
+      .where('n.user_id = :toUserId', { toUserId })
+      .andWhere('n.type = :type', { type: 'poke' })
+      .andWhere('n.collaborative_routine_id = :collaborativeRoutineId', {
+        collaborativeRoutineId,
+      })
+      .andWhere("n.created_at > NOW() - INTERVAL '10 minutes'")
+      .andWhere('n.body LIKE :senderPattern', {
+        senderPattern: `%poked you%`,
+      })
+      .getOne();
+
+    if (recentPoke) {
+      throw new BadRequestException(
+        'You already poked this user recently. Please wait before poking again.',
+      );
+    }
+
+    // Send the poke notification + push notification.
+    // createAndPush() persists the notification in the DB and sends a real push
+    // notification via the Expo Push API (https://exp.host/--/api/v2/push/send).
+    // Push notifications require a valid Expo push token (fcmToken) on the target user,
+    // which is only available in production/standalone builds — they will NOT work
+    // in Expo Go during development.
+    const fromUser = await this.userRepo.findOne({ where: { id: fromUserId } });
+    const senderName = fromUser?.name ?? 'Someone';
+
+    await this.createAndPush({
+      userId: toUserId,
+      type: 'poke',
+      title: 'Poke! 👈',
+      body: `${senderName} poked you in "${routine.routineName}"!`,
+      collaborativeRoutineId,
+    });
+
+    return { message: 'Poke sent' };
   }
 
   // ── REST API methods ──
