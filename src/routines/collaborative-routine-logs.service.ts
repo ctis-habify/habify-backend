@@ -15,6 +15,7 @@ import { GcsService } from 'src/storage/gcs.service';
 import { AiService } from 'src/ai/ai.service';
 import { UsersService } from 'src/users/users.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { CollaborativeScoreService } from '../collaborative-score/collaborative-score.service';
 
 @Injectable()
 export class CollaborativeRoutineLogsService {
@@ -32,6 +33,7 @@ export class CollaborativeRoutineLogsService {
     private readonly aiService: AiService,
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
+    private readonly collaborativeScoreService: CollaborativeScoreService,
   ) {}
 
   async create(
@@ -211,6 +213,7 @@ export class CollaborativeRoutineLogsService {
       }
 
       await this.xpLogsService.awardXP(log.userId, log.routine.completionXp || 10);
+      await this.collaborativeScoreService.addPoints(log.userId, log.routine.completionXp || 10);
     }
 
     // Send notification to the submitter

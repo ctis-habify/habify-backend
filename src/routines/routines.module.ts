@@ -26,6 +26,7 @@ import { XpLogsModule } from 'src/xp-logs/xp-logs.module';
 import { RoutineLogsModule } from 'src/routine-logs/routine-logs.module';
 import { UsersModule } from 'src/users/users.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { CollaborativeScoreModule } from 'src/collaborative-score/collaborative-score.module';
 
 import { DueReminder } from './due-reminders.entity';
 
@@ -38,6 +39,7 @@ import { DueReminder } from './due-reminders.entity';
     RoutineLogsModule,
     UsersModule,
     NotificationsModule,
+    CollaborativeScoreModule,
     // TypeORM repository'ler
     TypeOrmModule.forFeature([
       Routine,
