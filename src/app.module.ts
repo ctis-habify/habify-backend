@@ -18,6 +18,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { FriendRequestsModule } from './friend-requests/friend-requests.module';
 import { RoutineInvitationsModule } from './routine-invitations/routine-invitations.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CollaborativeScoreModule } from './collaborative-score/collaborative-score.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     FriendRequestsModule,
     RoutineInvitationsModule,
     NotificationsModule,
+    CollaborativeScoreModule,
   ],
   controllers: [AppController],
   providers: [AppService],
