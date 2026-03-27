@@ -29,6 +29,8 @@ import { UsersService } from 'src/users/users.service';
 import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
 import { VerifyResult } from 'src/ai/ai.service';
 import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
+import { RoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
+import { ApiOperation } from '@nestjs/swagger';
 
 import type { Request } from 'express';
 import { Routine } from './routines.entity';
@@ -225,6 +227,15 @@ export class RoutinesController {
   @Get('collaborative/:id/logs')
   async getCollaborativeLogs(@Param('id') id: string) {
     return this.collaborativeLogs.getLogsByRoutine(id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('collaborative/:id/leaderboard')
+  @ApiOperation({ summary: 'Get leaderboard for a specific collaborative routine' })
+  async getCollaborativeRoutineLeaderboard(
+    @Param('id') id: string,
+  ): Promise<RoutineLeaderboardEntryDto[]> {
+    return this.collaborativeLogs.getLeaderboard(id);
   }
 
   @UseGuards(AuthGuard)

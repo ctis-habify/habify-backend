@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CollaborativeScore } from './collaborative-score.entity';
 import { RoutineMember } from '../routines/routine-members.entity';
+import { User } from '../users/users.entity';
+import { LeaderboardEntryDto } from '../common/dto/collaborative-score/leaderboard-entry.dto';
 
 @Injectable()
 export class CollaborativeScoreService {
@@ -13,6 +15,8 @@ export class CollaborativeScoreService {
     private readonly scoreRepository: Repository<CollaborativeScore>,
     @InjectRepository(RoutineMember)
     private readonly memberRepository: Repository<RoutineMember>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   /**
@@ -35,6 +39,36 @@ export class CollaborativeScoreService {
       totalPoints: score.totalPoints,
       currentStreak,
     };
+  }
+
+  /**
+   * Returns the global leaderboard, ranking users by their total collaborative points.
+   */
+  async getLeaderboard(limit: number = 50): Promise<LeaderboardEntryDto[]> {
+    const rows = await this.scoreRepository
+      .createQueryBuilder('score')
+      .innerJoin(User, 'user', 'user.id = score.user_id')
+      .select([
+        'score.user_id AS "userId"',
+        'score.total_points AS "totalPoints"',
+        'user.name AS "name"',
+        'user.username AS "username"',
+        'user.avatar_url AS "avatarUrl"',
+      ])
+      .orderBy('score.total_points', 'DESC')
+      .limit(limit)
+      .getRawMany();
+
+    return rows.map((row, index) => {
+      const entry = new LeaderboardEntryDto();
+      entry.rank = index + 1;
+      entry.userId = row.userId;
+      entry.name = row.name;
+      entry.username = row.username ?? null;
+      entry.avatarUrl = row.avatarUrl ?? null;
+      entry.totalPoints = parseInt(row.totalPoints, 10) || 0;
+      return entry;
+    });
   }
 
   /**
