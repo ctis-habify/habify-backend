@@ -16,6 +16,7 @@ import { AiService } from 'src/ai/ai.service';
 import { UsersService } from 'src/users/users.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { CollaborativeScoreService } from '../collaborative-score/collaborative-score.service';
+import { RoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
 
 @Injectable()
 export class CollaborativeRoutineLogsService {
@@ -284,5 +285,59 @@ export class CollaborativeRoutineLogsService {
     }
 
     return results;
+  }
+
+  async getApprovedLogCountMapByRoutine(routineId: string): Promise<Record<string, number>> {
+    const counts = await this.logsRepository
+      .createQueryBuilder('log')
+      .select('log.userId', 'userId')
+      .addSelect('COUNT(log.id)', 'count')
+      .where('log.collaborative_routine_id = :routineId', { routineId })
+      .andWhere('log.status = :status', { status: 'approved' })
+      .groupBy('log.userId')
+      .getRawMany();
+
+    const result: Record<string, number> = {};
+    for (const row of counts) {
+      result[row.userId] = parseInt(row.count, 10);
+    }
+    return result;
+  }
+
+  async getLeaderboard(routineId: string): Promise<RoutineLeaderboardEntryDto[]> {
+    const routine = await this.routinesRepository.findOne({
+      where: { id: routineId },
+      relations: ['members', 'members.user'],
+    });
+
+    if (!routine) {
+      throw new NotFoundException('Collaborative routine not found');
+    }
+
+    const logCounts = await this.getApprovedLogCountMapByRoutine(routineId);
+    const completionXp = routine.completionXp || 10;
+
+    const leaderboard: RoutineLeaderboardEntryDto[] = routine.members.map((member) => {
+      const approvedLogs = logCounts[member.userId] || 0;
+      const score = approvedLogs * completionXp;
+
+      const entry = new RoutineLeaderboardEntryDto();
+      entry.userId = member.userId;
+      entry.name = member.user.name;
+      entry.username = member.user.username || null;
+      entry.avatarUrl = member.user.avatarUrl || null;
+      entry.score = score;
+      return entry;
+    });
+
+    // Sort descending by score
+    leaderboard.sort((a, b) => b.score - a.score);
+
+    // Assign rank
+    leaderboard.forEach((entry, index) => {
+      entry.rank = index + 1;
+    });
+
+    return leaderboard;
   }
 }
