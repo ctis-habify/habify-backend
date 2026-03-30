@@ -38,6 +38,9 @@ export class CollaborativeRoutineLog {
   @Column('text', { array: true, default: '{}' })
   rejections: string[];
 
+  @Column({ name: 'required_approvals', type: 'int', default: 1 })
+  requiredApprovals: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
