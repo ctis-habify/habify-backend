@@ -1,4 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { UserCupDto } from './user-cup.dto';
 
 export class RoutineLeaderboardEntryDto {
   @ApiProperty({ example: 1, description: 'Rank of the user in this routine' })
@@ -23,4 +24,13 @@ export class RoutineLeaderboardEntryDto {
 
   @ApiProperty({ example: 150, description: 'Score in this routine' })
   score: number;
+
+  @ApiProperty({ type: () => UserCupDto, nullable: true })
+  cup: UserCupDto | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  cupTier: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Leaderboard medal for top-ranked users' })
+  leaderboardMedal: string | null;
 }

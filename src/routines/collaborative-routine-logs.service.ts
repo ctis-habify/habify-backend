@@ -316,6 +316,9 @@ export class CollaborativeRoutineLogsService {
 
     const logCounts = await this.getApprovedLogCountMapByRoutine(routineId);
     const completionXp = routine.completionXp || 10;
+    const cupsByUserId = await this.collaborativeScoreService.getCupMapForUsers(
+      routine.members.map((member) => member.userId),
+    );
 
     const leaderboard: RoutineLeaderboardEntryDto[] = routine.members.map((member) => {
       const approvedLogs = logCounts[member.userId] || 0;
@@ -327,6 +330,8 @@ export class CollaborativeRoutineLogsService {
       entry.username = member.user.username || null;
       entry.avatarUrl = member.user.avatarUrl || null;
       entry.score = score;
+      entry.cup = cupsByUserId[member.userId] ?? null;
+      entry.cupTier = entry.cup?.tier ?? null;
       return entry;
     });
 
@@ -336,8 +341,22 @@ export class CollaborativeRoutineLogsService {
     // Assign rank
     leaderboard.forEach((entry, index) => {
       entry.rank = index + 1;
+      entry.leaderboardMedal = this.getLeaderboardMedal(entry.rank);
     });
 
     return leaderboard;
+  }
+
+  private getLeaderboardMedal(rank: number): string | null {
+    if (rank === 1) {
+      return 'gold';
+    }
+    if (rank === 2) {
+      return 'silver';
+    }
+    if (rank === 3) {
+      return 'bronze';
+    }
+    return null;
   }
 }

@@ -4,6 +4,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CollaborativeScoreService } from './collaborative-score.service';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { LeaderboardEntryDto } from '../common/dto/collaborative-score/leaderboard-entry.dto';
+import { ScoreSummaryDto } from '../common/dto/collaborative-score/score-summary.dto';
 
 import type { Request } from 'express';
 
@@ -16,7 +17,7 @@ export class CollaborativeScoreController {
   @UseGuards(AuthGuard)
   @Get('me')
   @ApiOperation({ summary: 'Get collaborative score summary for the current user' })
-  async getMyScore(@Req() req: Request): Promise<{ totalPoints: number; currentStreak: number }> {
+  async getMyScore(@Req() req: Request): Promise<ScoreSummaryDto> {
     const userId = (req.user as JwtPayload).id;
     return this.collaborativeScoreService.getScoreSummary(userId);
   }
