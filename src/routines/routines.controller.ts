@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   Param,
   NotFoundException,
+  Logger,
   Patch,
   Post,
   Query,
@@ -40,6 +42,7 @@ import { CollaborativeRoutine } from './collaborative-routines.entity';
 @ApiBearerAuth('access-token')
 @Controller('routines')
 export class RoutinesController {
+  private readonly logger = new Logger(RoutinesController.name);
   constructor(
     private readonly routinesService: RoutinesService,
     private readonly ai: AiService,
@@ -50,10 +53,20 @@ export class RoutinesController {
     private readonly usersService: UsersService,
   ) {}
 
+  private getUserId(req: Request): string {
+    const user = req.user as
+      | import('../auth/interfaces/jwt-payload.interface').JwtPayload
+      | undefined;
+    if (!user?.id) {
+      throw new BadRequestException('Authenticated user is required');
+    }
+    return user.id;
+  }
+
   @UseGuards(AuthGuard)
   @Get('me')
   async getMyRoutines(@Req() req: Request): Promise<Routine[]> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.getUserRoutines(userId);
   }
 
@@ -61,7 +74,7 @@ export class RoutinesController {
   @UseGuards(AuthGuard)
   @Post()
   async createRoutine(@Req() req: Request, @Body() dto: CreateRoutineDto): Promise<Routine> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
 
     return this.routinesService.createRoutine({
       ...dto,
@@ -75,7 +88,7 @@ export class RoutinesController {
     @Req() req: Request,
     @Body() dto: CreateCollaborativeRoutineDto,
   ): Promise<CollaborativeRoutine> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.createCollaborativeRoutine({
       ...dto,
       userId,
@@ -88,7 +101,7 @@ export class RoutinesController {
     @Req() req: Request,
     @Body() body: { key: string },
   ): Promise<{ message: string }> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.joinRoutine(userId, body.key);
   }
 
@@ -100,7 +113,7 @@ export class RoutinesController {
     @Query('categoryId') categoryId?: number,
     @Query('frequencyType') frequencyType?: string,
   ): Promise<PublicCollaborativeRoutineResponseDto[]> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.browsePublicRoutines(userId, search, categoryId, frequencyType);
   }
 
@@ -110,7 +123,7 @@ export class RoutinesController {
     @Req() req: Request,
     @Param('id') routineId: string,
   ): Promise<{ message: string }> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.joinPublicRoutine(userId, routineId);
   }
 
@@ -120,14 +133,14 @@ export class RoutinesController {
     @Req() req: Request,
     @Param('id') routineId: string,
   ): Promise<{ message: string }> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.removeMember(userId, routineId, userId);
   }
 
   @UseGuards(AuthGuard)
   @Get('collaborative')
   async getCollaborativeRoutines(@Req() req: Request): Promise<CollaborativeRoutine[]> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.getCollaborativeRoutines(userId);
   }
 
@@ -144,7 +157,7 @@ export class RoutinesController {
     @Param('id') routineId: string,
     @Param('userId') memberIdToRemove: string,
   ): Promise<{ message: string }> {
-    const requesterId = req.user.id;
+    const requesterId = this.getUserId(req);
     return this.routinesService.removeMember(requesterId, routineId, memberIdToRemove);
   }
 
@@ -152,55 +165,74 @@ export class RoutinesController {
   @UseGuards(AuthGuard)
   @Get('grouped')
   async getMyRoutinesListed(@Req() req: Request): Promise<RoutineListWithRoutinesDto[]> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.getAllRoutinesByList(userId);
   }
 
   @UseGuards(AuthGuard)
   @Post('verify')
   async verify(
-    @Body() body: { routineId: string; objectPath: string },
+    @Body() body: { routineId?: string; objectPath?: string },
     @Req() req: Request,
   ): Promise<VerifyResult> {
-    const userId = req.user.id;
+    try {
+      const userId = this.getUserId(req);
+      const bodyRecord = body as Record<string, unknown>;
+      const legacyRoutineId =
+        typeof bodyRecord.routine_id === 'string' ? bodyRecord.routine_id : undefined;
+      const routineId = (body.routineId || legacyRoutineId || '').trim();
+      const objectPath = (body.objectPath || '').trim();
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-    // 1. Try personal routine first
-    let routine: Routine | CollaborativeRoutine | null = await this.routinesService.getRoutineById(
-      userId,
-      body.routineId,
-    );
-    let isCollab = false;
+      if (!routineId || !uuidRegex.test(routineId)) {
+        throw new BadRequestException('Valid routineId is required');
+      }
+      if (!objectPath) {
+        throw new BadRequestException('objectPath is required');
+      }
 
-    if (!routine) {
-      // 2. Try collaborative routine
-      routine = await this.routinesService.getCollaborativeRoutineById(body.routineId);
-      isCollab = true;
+      // 1. Try personal routine first
+      let routine: Routine | CollaborativeRoutine | null =
+        await this.routinesService.getRoutineById(userId, routineId);
+      let isCollab = false;
+
+      if (!routine) {
+        // 2. Try collaborative routine
+        routine = await this.routinesService.getCollaborativeRoutineById(routineId);
+        isCollab = true;
+      }
+
+      if (!routine) throw new NotFoundException('Routine group or personal routine not found');
+
+      if (isCollab) {
+        await this.collaborativeLogs.create(routineId, objectPath, userId);
+        return { score: 1, verified: false, pending: true };
+      }
+
+      const routineText = routine.routineName;
+      const signedReadUrl = await this.gcs.getSignedReadUrl(objectPath, 600);
+      const aiResult = await this.ai.verify({ imageUrl: signedReadUrl, text: routineText });
+
+      if (aiResult.verified) {
+        await this.routineLogs.create(routineId, objectPath, userId, {
+          preverified: true,
+        });
+      }
+
+      return aiResult;
+    } catch (error) {
+      this.logger.error(
+        `verify failed: ${(error as Error)?.message || 'unknown error'} | body=${JSON.stringify(body)}`,
+      );
+      throw error;
     }
-
-    if (!routine) throw new NotFoundException('Routine group or personal routine not found');
-
-    if (isCollab) {
-      await this.collaborativeLogs.create(body.routineId, body.objectPath, userId);
-      return { score: 1, verified: false, pending: true };
-    }
-
-    const routineText = routine.routineName;
-    const signedReadUrl = await this.gcs.getSignedReadUrl(body.objectPath, 600);
-    const aiResult = await this.ai.verify({ imageUrl: signedReadUrl, text: routineText });
-
-    if (aiResult.verified) {
-      await this.routineLogs.create(body.routineId, body.objectPath, userId, {
-        preverified: true,
-      });
-    }
-
-    return aiResult;
   }
 
   @UseGuards(AuthGuard)
   @Get('today')
   async getTodayRoutines(@Req() req: Request): Promise<TodayScreenResponseDto> {
-    const userId = req.user.id; // Accessing user ID from the token
+    const userId = this.getUserId(req); // Accessing user ID from the token
     // 1. Get Routines
     const routines = await this.routinesService.getTodayRoutines(userId);
 
@@ -241,7 +273,7 @@ export class RoutinesController {
   @UseGuards(AuthGuard)
   @Get(':id/logs')
   async getAnyRoutineLogs(@Param('id') id: string, @Req() req: Request) {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     // Check if it's a collaborative routine
     const collabRoutine = await this.routinesService.getCollaborativeRoutineById(id);
     if (collabRoutine) {
@@ -269,7 +301,7 @@ export class RoutinesController {
     @Req() req: Request,
     @Param('id') id: string,
   ): Promise<Routine | CollaborativeRoutine | null> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     const routine = await this.routinesService.getRoutineById(userId, id);
     if (routine) return routine;
 
@@ -284,7 +316,7 @@ export class RoutinesController {
     @Param('id') id: string,
     @Body() dto: UpdateRoutineDto,
   ): Promise<Routine> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.updateRoutine(userId, id, dto);
   }
 
@@ -292,7 +324,7 @@ export class RoutinesController {
   @UseGuards(AuthGuard)
   @Delete(':id')
   async deleteRoutine(@Req() req: Request, @Param('id') id: string): Promise<{ message: string }> {
-    const userId = req.user.id;
+    const userId = this.getUserId(req);
     return this.routinesService.deleteRoutine(userId, id);
   }
 }

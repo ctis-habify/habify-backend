@@ -36,6 +36,21 @@ export class CollaborativeChatService {
     return this.chatRepo.save(chat);
   }
 
+  async sendSystemMessage(
+    routineId: string,
+    actorUserId: string,
+    message: string,
+  ): Promise<CollaborativeChatMessage> {
+    const routine = await this.routineRepo.findOne({ where: { id: routineId } });
+    if (!routine) throw new NotFoundException('Routine not found');
+    const chat = this.chatRepo.create({
+      routineId,
+      userId: actorUserId,
+      message: `[SYSTEM] ${message}`,
+    });
+    return this.chatRepo.save(chat);
+  }
+
   getPredefinedMessages(): string[] {
     return PREDEFINED_CHAT_MESSAGES;
   }

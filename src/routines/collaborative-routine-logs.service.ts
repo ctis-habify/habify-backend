@@ -17,6 +17,7 @@ import { UsersService } from 'src/users/users.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { CollaborativeScoreService } from '../collaborative-score/collaborative-score.service';
 import { RoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
+import { CollaborativeChatService } from './collaborative-chat.service';
 
 @Injectable()
 export class CollaborativeRoutineLogsService {
@@ -35,6 +36,7 @@ export class CollaborativeRoutineLogsService {
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
     private readonly collaborativeScoreService: CollaborativeScoreService,
+    private readonly collaborativeChatService: CollaborativeChatService,
   ) {}
 
   async create(
@@ -61,6 +63,10 @@ export class CollaborativeRoutineLogsService {
       this.logger.warn('CollaborativeRoutineLogsService.create: verificationImageUrl is missing');
       throw new BadRequestException('Verification image is required');
     }
+    const memberCount = await this.memberRepository.count({
+      where: { collaborativeRoutineId: routineId },
+    });
+    const requiredApprovals = Math.max(1, memberCount - 1);
 
     const newLog = this.logsRepository.create({
       logDate: new Date(),
@@ -71,6 +77,7 @@ export class CollaborativeRoutineLogsService {
       userId,
       approvals: [],
       rejections: [],
+      requiredApprovals,
     });
 
     const savedLog = await this.logsRepository.save(newLog);
@@ -147,6 +154,9 @@ export class CollaborativeRoutineLogsService {
       this.logger.warn(`CollaborativeRoutineLogsService.verifyLog: log not found for id ${logId}`);
       throw new NotFoundException('Log not found');
     }
+    if (log.status !== 'pending') {
+      throw new BadRequestException('This log is already finalized');
+    }
     const alreadyApproved = log.approvals || [];
     const alreadyRejected = log.rejections || [];
 
@@ -169,14 +179,18 @@ export class CollaborativeRoutineLogsService {
       log.rejections = [...alreadyRejected, userId];
     }
 
-    // Threshold check: All other members must approve (Total - 1)
-    const requiredApprovals = Math.max(1, log.routine.members.length - 1);
+    // Threshold check:
+    // - pending logs follow current member count (excluding submitter),
+    //   but never below the creation snapshot.
+    // - finalized logs keep their snapshot and are not re-opened.
+    const currentRequiredApprovals = Math.max(1, (log.routine?.members?.length || 1) - 1);
+    const requiredApprovals = Math.max(1, log.requiredApprovals || 1, currentRequiredApprovals);
     const currentApprovals = log.approvals.length;
 
     const isThresholdMet = currentApprovals >= requiredApprovals;
 
     // We only update the final status and award XP/streak when the threshold is met
-    // OR if someone explicitly rejected (it could also be a threshold for rejection)
+    // OR if someone explicitly rejected.
     const isFirstTimeVerified = isThresholdMet && log.status === 'pending';
     const isFirstTimeRejected = status === 'rejected' && log.status === 'pending';
 
@@ -190,6 +204,7 @@ export class CollaborativeRoutineLogsService {
 
     await this.logsRepository.save(log);
 
+    let completionStreak: number | undefined;
     if (isFirstTimeVerified) {
       const submitterMembership = await this.memberRepository.findOne({
         where: { userId: log.userId, collaborativeRoutineId: log.routine.id },
@@ -211,10 +226,22 @@ export class CollaborativeRoutineLogsService {
           submitterMembership.lastCompletedDate = today;
           await this.memberRepository.save(submitterMembership);
         }
+        completionStreak = submitterMembership.streak;
       }
 
       await this.xpLogsService.awardXP(log.userId, log.routine.completionXp || 10);
       await this.collaborativeScoreService.addPoints(log.userId, log.routine.completionXp || 10);
+
+      try {
+        const submitter = await this.usersService.findById(log.userId);
+        await this.collaborativeChatService.sendSystemMessage(
+          log.routine.id,
+          log.userId,
+          `${submitter?.name || 'A member'} completed "${log.routine.routineName}" (${log.approvals.length}/${requiredApprovals} approvals).`,
+        );
+      } catch {
+        // best-effort system chat message
+      }
     }
 
     // Send notification to the submitter
@@ -234,7 +261,15 @@ export class CollaborativeRoutineLogsService {
       // log error but don't fail the verification
     }
 
-    return { message: `Log ${status} successfully` };
+    const completedUser = isFirstTimeVerified ? await this.usersService.findById(log.userId) : null;
+    return {
+      message: `Log ${status} successfully`,
+      isCompletedByGroup: isFirstTimeVerified,
+      awardedXp: isFirstTimeVerified ? log.routine.completionXp || 10 : 0,
+      completionStreak: isFirstTimeVerified ? completionStreak || 1 : undefined,
+      completedUserId: isFirstTimeVerified ? log.userId : undefined,
+      completedUserName: isFirstTimeVerified ? completedUser?.name || 'Member' : undefined,
+    };
   }
 
   async getLogsByRoutine(routineId: string): Promise<Record<string, unknown>[]> {
@@ -242,13 +277,22 @@ export class CollaborativeRoutineLogsService {
       where: {
         routine: { id: routineId },
       },
-      relations: ['routine', 'routine.category'],
-      order: { logDate: 'DESC' },
+      relations: ['routine', 'routine.category', 'routine.members'],
+      order: { createdAt: 'DESC' },
     });
 
     const results = [];
     for (const log of logs) {
+      const approvalCount = (log.approvals || []).length;
+      const currentRequiredApprovals = Math.max(1, (log.routine?.members?.length || 1) - 1);
+      const requiredApprovals =
+        log.status === 'pending'
+          ? Math.max(1, log.requiredApprovals || 1, currentRequiredApprovals)
+          : Math.max(1, log.requiredApprovals || 1, approvalCount);
       const user = await this.usersService.findById(log.userId);
+      const submitterMembership = await this.memberRepository.findOne({
+        where: { userId: log.userId, collaborativeRoutineId: log.routine.id },
+      });
       let signedUrl = log.verificationImageUrl;
       if (signedUrl && !signedUrl.startsWith('http')) {
         try {
@@ -260,6 +304,7 @@ export class CollaborativeRoutineLogsService {
       results.push({
         id: log.id,
         logDate: log.logDate,
+        createdAt: log.createdAt,
         isVerified: log.isVerified,
         status: log.status,
         verificationImageUrl: signedUrl,
@@ -269,6 +314,11 @@ export class CollaborativeRoutineLogsService {
         userId: user?.id,
         userName: user?.name,
         userAvatar: user?.avatarUrl,
+        completionXp: log.routine.completionXp || 10,
+        submitterStreak: submitterMembership?.streak || 0,
+        requiredApprovals,
+        approvalCount,
+        isCompletedByGroup: log.status === 'approved' && approvalCount >= requiredApprovals,
         approvals: await Promise.all(
           (log.approvals || []).map(async (uid) => {
             const u = await this.usersService.findById(uid);
