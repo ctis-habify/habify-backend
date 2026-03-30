@@ -6,9 +6,13 @@ import { CollaborativeScoreController } from './collaborative-score.controller';
 import { RoutineMember } from '../routines/routine-members.entity';
 import { User } from '../users/users.entity';
 import { AuthModule } from '../auth/auth.module';
+import { CollaborativeRoutineLog } from '../routines/collaborative-routine-logs.entity';
 
 @Module({
-  imports: [AuthModule, TypeOrmModule.forFeature([CollaborativeScore, RoutineMember, User])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([CollaborativeScore, CollaborativeRoutineLog, RoutineMember, User]),
+  ],
   controllers: [CollaborativeScoreController],
   providers: [CollaborativeScoreService],
   exports: [CollaborativeScoreService],

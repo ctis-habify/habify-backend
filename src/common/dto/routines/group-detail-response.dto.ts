@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { UserCupDto } from '../collaborative-score/user-cup.dto';
 
 class ParticipantDto {
   @ApiProperty()
@@ -18,6 +19,12 @@ class ParticipantDto {
 
   @ApiProperty()
   joinedAt: Date;
+
+  @ApiProperty({ type: () => UserCupDto, nullable: true })
+  cup: UserCupDto | null;
+
+  @ApiProperty({ nullable: true })
+  cupTier: string | null;
 }
 
 class GroupRulesDto {

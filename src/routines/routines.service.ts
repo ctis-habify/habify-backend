@@ -26,6 +26,7 @@ import { UsersService } from 'src/users/users.service';
 import { RoutineLog } from '../routine-logs/routine-logs.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
 import { RoutineMember } from './routine-members.entity';
+import { CollaborativeScoreService } from 'src/collaborative-score/collaborative-score.service';
 
 @Injectable()
 export class RoutinesService {
@@ -52,6 +53,7 @@ export class RoutinesService {
     private readonly userRepo: Repository<User>,
 
     private readonly usersService: UsersService,
+    private readonly collaborativeScoreService: CollaborativeScoreService,
   ) {}
 
   // List routines by user
@@ -289,6 +291,9 @@ export class RoutinesService {
       throw new NotFoundException('Group not found');
     }
 
+    const participantUserIds = routine.members.map((member) => member.userId);
+    const cupsByUserId = await this.collaborativeScoreService.getCupMapForUsers(participantUserIds);
+
     return {
       id: routine.id,
       name: routine.routineName,
@@ -309,6 +314,8 @@ export class RoutinesService {
         role: m.role,
         streak: m.streak,
         joinedAt: m.joinedAt,
+        cup: cupsByUserId[m.userId] ?? null,
+        cupTier: cupsByUserId[m.userId]?.tier ?? null,
       })),
     };
   }
@@ -651,6 +658,12 @@ export class RoutinesService {
       where: { userId },
       relations: ['routine', 'routine.category', 'routine.members', 'routine.members.user'],
     });
+
+    const enrolledUserIds = memberships.flatMap((membership) =>
+      membership.routine.members.map((member) => member.userId),
+    );
+    const cupsByUserId = await this.collaborativeScoreService.getCupMapForUsers(enrolledUserIds);
+
     // Map to routine cards with required info
     return memberships.map((m) => {
       const routine = m.routine as CollaborativeRoutine;
@@ -662,6 +675,8 @@ export class RoutinesService {
           userId: member.user.id,
           username: member.user.name,
           avatarUrl: member.user.avatarUrl,
+          cup: cupsByUserId[member.userId] ?? null,
+          cupTier: cupsByUserId[member.userId]?.tier ?? null,
         })),
       };
     });
