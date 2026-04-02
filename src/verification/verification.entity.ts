@@ -43,4 +43,8 @@ export class Verification {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+  
+  get verified(): boolean {
+    return this.isVerified;
+  }
 }
