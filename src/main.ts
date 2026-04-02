@@ -8,6 +8,7 @@ dotenv.config();
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  app.enableCors(); // Expo ve diğer cihazların erişebilmesi için gerekli
 
   // DTO validation
   app.useGlobalPipes(
@@ -35,6 +36,7 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document); // => /docs endpoint
 
-  await app.listen(3000);
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
 }
 bootstrap();
