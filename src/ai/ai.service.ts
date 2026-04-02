@@ -82,10 +82,12 @@ export class AiService implements OnModuleInit {
     }
 
     try {
+      this.logger.log(`Starting AI verification for image: ${payload.imageUrl}`);
       await this.ensureModelsLoaded();
 
       const imgBuf = await this.downloadImageBuffer(payload.imageUrl);
       const imageInputs = await this.preprocessToPixelValuesFromBuffer(imgBuf);
+
       const textInputs = await this.tokenizer!([payload.text], {
         padding: true,
         truncation: true,
@@ -99,13 +101,17 @@ export class AiService implements OnModuleInit {
       const txt = this.l2NormalizeFloat32(textEmbeds.data);
       const similarity = this.cosineSimilarity(img, txt);
 
+      this.logger.log(`AI Score: ${similarity.toFixed(4)} (Threshold: ${this.threshold})`);
       const verified = similarity >= this.threshold;
 
       return { score: similarity, verified };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`AI verify error: ${message}`);
-      throw new ServiceUnavailableException(`AI verification failed: ${message}`);
+      this.logger.error(`AI verification error details: ${message}`);
+
+      // Eğer hata "modeller yüklü değil" gibi bir teknik hata değilse,
+      // kullanıcıya "meşgul" demek yerine doğrulama başarısız diyebiliriz.
+      return { score: 0, verified: false, pending: false };
     }
   }
 
