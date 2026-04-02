@@ -64,7 +64,7 @@ export class AiService implements OnModuleInit {
       CLIPTextModelWithProjection: textModelClass,
       CLIPVisionModelWithProjection: visionModelClass,
       Tensor: tensorClass,
-    } = (await eval('import("@xenova/transformers")')) as TransformersModule;
+    } = (await import('@xenova/transformers')) as unknown as TransformersModule;
 
     this.tensorClass = tensorClass;
     this.textModel = await textModelClass.from_pretrained(MODEL_ID);
@@ -109,12 +109,31 @@ export class AiService implements OnModuleInit {
   }
 
   private async downloadImageBuffer(url: string): Promise<Buffer> {
+    this.validateUrl(url);
     const res = await axios.get(url, {
       responseType: 'arraybuffer',
-      timeout: 25000,
-      maxContentLength: 10 * 1024 * 1024,
+      timeout: 15000,
+      maxContentLength: 5 * 1024 * 1024, // 5MB limit
     });
     return Buffer.from(res.data);
+  }
+
+  private validateUrl(url: string): void {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('Invalid protocol. Only http and https are allowed.');
+    }
+    const host = parsed.hostname.toLowerCase();
+    const isInternal =
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.startsWith('192.168.') ||
+      host.startsWith('10.') ||
+      host.includes('169.254'); // Metadata server
+
+    if (isInternal) {
+      throw new Error('Access to internal network is forbidden.');
+    }
   }
 
   private async preprocessToPixelValuesFromBuffer(
