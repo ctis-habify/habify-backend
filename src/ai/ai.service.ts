@@ -104,7 +104,7 @@ export class AiService implements OnModuleInit {
       this.logger.log(`AI Score: ${similarity.toFixed(4)} (Threshold: ${this.threshold})`);
       const verified = similarity >= this.threshold;
 
-      return { score: similarity, verified };
+      return { score: similarity, verified, pending: false};
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`AI verification error details: ${message}`);
