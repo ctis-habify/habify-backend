@@ -104,13 +104,13 @@ export class AiService implements OnModuleInit {
       this.logger.log(`AI Score: ${similarity.toFixed(4)} (Threshold: ${this.threshold})`);
       const verified = similarity >= this.threshold;
 
-      return { score: similarity, verified, pending: false};
+      return { score: similarity, verified, pending: false };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`AI verification error details: ${message}`);
 
-      // Eğer hata "modeller yüklü değil" gibi bir teknik hata değilse,
-      // kullanıcıya "meşgul" demek yerine doğrulama başarısız diyebiliriz.
+      // Teknik bir hata olsa bile (boyut, timeout vb.) sonucu 'failed' olarak dönüyoruz
+      // ki frontend "System Busy" demesin.
       return { score: 0, verified: false, pending: false };
     }
   }
@@ -119,8 +119,8 @@ export class AiService implements OnModuleInit {
     this.validateUrl(url);
     const res = await axios.get(url, {
       responseType: 'arraybuffer',
-      timeout: 15000,
-      maxContentLength: 5 * 1024 * 1024, // 5MB limit
+      timeout: 20000, // 20 saniye timeout (daha uzun süre)
+      maxContentLength: 15 * 1024 * 1024, // 15MB limit (3 katına çıktı)
     });
     return Buffer.from(res.data);
   }

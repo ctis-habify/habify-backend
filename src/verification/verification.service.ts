@@ -49,7 +49,9 @@ export class VerificationService {
       status: 'pending',
     });
 
+    this.logger.log(`New verification submission for routine: ${dto.routineId}, User: ${userId}`);
     const saved = await this.verificationRepository.save(verification);
+    this.logger.log(`Verification saved with ID: ${saved.id}. Adding to queue...`);
 
     await this.verificationQueue.add(
       'verify',
