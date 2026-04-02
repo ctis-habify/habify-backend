@@ -12,12 +12,8 @@ export class GcsService {
   constructor() {
     const projectId = process.env.GCS_PROJECT_ID?.trim();
     const bucketName = process.env.GCS_BUCKET?.trim();
+    const gcsKeyJson = process.env.GCS_KEY_JSON?.trim();
     const credentialsPathRaw = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
-    const credentialsPath = credentialsPathRaw
-      ? path.isAbsolute(credentialsPathRaw)
-        ? credentialsPathRaw
-        : path.resolve(process.cwd(), credentialsPathRaw)
-      : undefined;
 
     if (!projectId) {
       this.initError = 'GCS_PROJECT_ID is not set';
@@ -28,17 +24,31 @@ export class GcsService {
       return;
     }
 
-    if (credentialsPath && !fs.existsSync(credentialsPath)) {
-      this.initError =
-        `GOOGLE_APPLICATION_CREDENTIALS file not found at "${credentialsPath}". ` +
-        'Create the file or update GOOGLE_APPLICATION_CREDENTIALS in .env';
-      return;
+    const storageOptions: any = { projectId };
+
+    if (gcsKeyJson && gcsKeyJson.startsWith('{')) {
+      try {
+        storageOptions.credentials = JSON.parse(gcsKeyJson);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.initError = `Invalid GCS_KEY_JSON content: ${message}`;
+        return;
+      }
+    } else if (credentialsPathRaw) {
+      const credentialsPath = path.isAbsolute(credentialsPathRaw)
+        ? credentialsPathRaw
+        : path.resolve(process.cwd(), credentialsPathRaw);
+
+      if (!fs.existsSync(credentialsPath)) {
+        this.initError =
+          `GOOGLE_APPLICATION_CREDENTIALS file not found at "${credentialsPath}". ` +
+          'Create the file or update GOOGLE_APPLICATION_CREDENTIALS in .env';
+        return;
+      }
+      storageOptions.keyFilename = credentialsPath;
     }
 
-    this.storage = new Storage({
-      projectId,
-      ...(credentialsPath ? { keyFilename: credentialsPath } : {}),
-    });
+    this.storage = new Storage(storageOptions);
     this.bucket = this.storage.bucket(bucketName);
   }
 
