@@ -19,14 +19,19 @@ export class VerificationController {
   @ApiOkResponse({ type: Verification })
   async submit(@Body() dto: SubmitVerificationDto, @Req() req: Request): Promise<any> {
     const userId = req.user.id;
-    const result = await this.verificationService.submit(dto, userId);
+    const saved = await this.verificationService.submit(dto, userId);
+
+    // Objenin içindeki tüm alanları tek tek ve garanti bir şekilde gönderiyoruz.
     return {
-      id: result.id,
-      status: result.status,
-      isVerified: result.isVerified,
-      verified: result.isVerified,
-      failReason: result.failReason,
-      score: result.score,
+      id: saved.id,
+      status: saved.status,
+      userId: saved.userId,
+      verificationImageUrl: saved.verificationImageUrl,
+      isVerified: saved.isVerified,
+      verified: saved.isVerified,
+      failReason: saved.failReason || null,
+      score: saved.score || 0,
+      createdAt: saved.createdAt,
     };
   }
 
@@ -35,14 +40,18 @@ export class VerificationController {
   async getVerification(
     @Param(new ValidationPipe({ transform: true })) params: VerificationRequestDto,
   ): Promise<any> {
-    const result = await this.verificationService.findOne(params.id);
+    const found = await this.verificationService.findOne(params.id);
+
     return {
-      id: result.id,
-      status: result.status,
-      isVerified: result.isVerified,
-      verified: result.isVerified,
-      failReason: result.failReason,
-      score: result.score,
+      id: found.id,
+      status: found.status,
+      userId: found.userId,
+      verificationImageUrl: found.verificationImageUrl,
+      isVerified: found.isVerified,
+      verified: found.isVerified,
+      failReason: found.failReason || null,
+      score: found.score || 0,
+      createdAt: found.createdAt,
     };
   }
 }
