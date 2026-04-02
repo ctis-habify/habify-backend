@@ -50,6 +50,7 @@ export class AiService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     try {
       await this.ensureModelsLoaded();
+      this.logger.log('CLIP models loaded successfully. AI service is ready.');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to load CLIP models: ${message}`);
