@@ -17,16 +17,32 @@ export class VerificationController {
 
   @Post('submit')
   @ApiOkResponse({ type: Verification })
-  async submit(@Body() dto: SubmitVerificationDto, @Req() req: Request): Promise<Verification> {
+  async submit(@Body() dto: SubmitVerificationDto, @Req() req: Request): Promise<any> {
     const userId = req.user.id;
-    return this.verificationService.submit(dto, userId);
+    const result = await this.verificationService.submit(dto, userId);
+    return {
+      id: result.id,
+      status: result.status,
+      isVerified: result.isVerified,
+      verified: result.isVerified,
+      failReason: result.failReason,
+      score: result.score,
+    };
   }
 
   @Get(':id')
   @ApiOkResponse({ type: Verification })
   async getVerification(
     @Param(new ValidationPipe({ transform: true })) params: VerificationRequestDto,
-  ): Promise<Verification> {
-    return this.verificationService.findOne(params.id);
+  ): Promise<any> {
+    const result = await this.verificationService.findOne(params.id);
+    return {
+      id: result.id,
+      status: result.status,
+      isVerified: result.isVerified,
+      verified: result.isVerified,
+      failReason: result.failReason,
+      score: result.score,
+    };
   }
 }
