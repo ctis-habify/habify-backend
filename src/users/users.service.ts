@@ -7,6 +7,7 @@ import { User } from './users.entity';
 import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
 import { FriendRequest, FriendRequestStatus } from 'src/friend-requests/friend-requests.entity';
 import { ProfileResponseDto } from '../common/dto/users/profile-response.dto';
+import { FriendProfileResponseDto } from '../common/dto/users/friend-profile-response.dto';
 import { UpdateProfileDto } from '../common/dto/users/update-profile.dto';
 import { UserSearchResultDto } from '../common/dto/users/user-search-result.dto';
 
@@ -100,6 +101,46 @@ export class UsersService {
     dto.birthDate = user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null;
     dto.avatarUrl = user.avatarUrl;
     dto.totalXp = user.totalXp;
+    dto.friends = friends;
+
+    return dto;
+  }
+
+  async getFriendProfile(userId: string): Promise<FriendProfileResponseDto> {
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const acceptedRequests = await this.friendRequestsRepo.find({
+      where: { status: FriendRequestStatus.accepted },
+      relations: ['fromUser', 'toUser'],
+    });
+
+    const friends = acceptedRequests
+      .filter((fr) => fr.fromUserId === userId || fr.toUserId === userId)
+      .map((fr) => {
+        const peer = fr.fromUserId === userId ? fr.toUser : fr.fromUser;
+        const friendDto = new UserSearchResultDto();
+        friendDto.id = peer.id;
+        friendDto.name = peer.name;
+        friendDto.username = peer.username;
+        friendDto.avatarUrl = peer.avatarUrl;
+        friendDto.totalXp = peer.totalXp;
+        return friendDto;
+      });
+
+    const dto = new FriendProfileResponseDto();
+    dto.id = user.id;
+    dto.name = user.name;
+    dto.username = user.username;
+    dto.email = user.email;
+    dto.gender = user.gender ?? null;
+    dto.age = this.computeAge(user.birthDate);
+    dto.birthDate = user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null;
+    dto.avatarUrl = user.avatarUrl;
+    dto.totalXp = user.totalXp;
+    dto.currentStreak = 0;
+    dto.createdAt = user.createdAt;
+    dto.updatedAt = user.updatedAt;
     dto.friends = friends;
 
     return dto;
