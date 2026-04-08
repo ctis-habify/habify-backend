@@ -4,6 +4,7 @@ import {
   Patch,
   Delete,
   Body,
+  Param,
   Req,
   Query,
   UseGuards,
@@ -12,9 +13,10 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../auth/auth.guard';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { ProfileResponseDto } from '../common/dto/users/profile-response.dto';
+import { FriendProfileResponseDto } from '../common/dto/users/friend-profile-response.dto';
 import { UpdateProfileDto } from '../common/dto/users/update-profile.dto';
 import { UserSearchResultDto } from '../common/dto/users/user-search-result.dto';
 
@@ -40,6 +42,13 @@ export class UsersController {
   ): Promise<UserSearchResultDto[]> {
     const userId = req.user.id;
     return this.usersService.searchUsers(userId, q || '');
+  }
+
+  @UseGuards(AuthGuard)
+  @Get(':userId')
+  @ApiOperation({ summary: "Get a specific user's public profile by ID" })
+  async getUserProfile(@Param('userId') userId: string): Promise<FriendProfileResponseDto> {
+    return this.usersService.getFriendProfile(userId);
   }
 
   // Updates the logged-in user's profile fields (name, avatarUrl)

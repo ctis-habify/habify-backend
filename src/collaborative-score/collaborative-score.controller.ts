@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { CollaborativeScoreService } from './collaborative-score.service';
@@ -34,5 +34,12 @@ export class CollaborativeScoreController {
   async getLeaderboard(@Query('limit') limit?: string): Promise<LeaderboardEntryDto[]> {
     const parsedLimit = limit ? parseInt(limit, 10) : 50;
     return this.collaborativeScoreService.getLeaderboard(parsedLimit);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get(':userId')
+  @ApiOperation({ summary: 'Get collaborative score summary for a specific user' })
+  async getUserScore(@Param('userId') userId: string): Promise<ScoreSummaryDto> {
+    return this.collaborativeScoreService.getScoreSummary(userId);
   }
 }

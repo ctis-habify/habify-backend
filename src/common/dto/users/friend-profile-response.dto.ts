@@ -1,0 +1,43 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { UserSearchResultDto } from './user-search-result.dto';
+
+export class FriendProfileResponseDto {
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
+  id: string;
+
+  @ApiProperty({ example: 'Sueda Akça' })
+  name: string;
+
+  @ApiPropertyOptional({ example: 'sueda_akca', nullable: true })
+  username: string | null;
+
+  @ApiProperty({ example: 'sueda@example.com' })
+  email: string;
+
+  @ApiPropertyOptional({ example: 'male', nullable: true })
+  gender: string | null;
+
+  @ApiPropertyOptional({ example: 23, nullable: true })
+  age: number | null;
+
+  @ApiPropertyOptional({ example: '2000-05-15', nullable: true })
+  birthDate: string | null;
+
+  @ApiPropertyOptional({ example: 'https://storage.example.com/avatar.jpg', nullable: true })
+  avatarUrl: string | null;
+
+  @ApiProperty({ example: 1250 })
+  totalXp: number;
+
+  @ApiProperty({ example: 0 })
+  currentStreak: number;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiProperty({ type: [UserSearchResultDto] })
+  friends: UserSearchResultDto[];
+}
