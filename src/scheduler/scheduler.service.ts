@@ -3,13 +3,17 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
 import { Subject, Observable } from 'rxjs';
 import { Routine } from '../routines/routines.entity';
+import { RoutinePenaltyService } from '../routines/routine-penalty.service';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {
   private readonly logger = new Logger(SchedulerService.name);
   private readonly events$ = new Subject<{ type: string; timestamp: string }>();
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly routinePenaltyService: RoutinePenaltyService,
+  ) {}
 
   async onModuleInit(): Promise<void> {}
 
@@ -24,6 +28,9 @@ export class SchedulerService implements OnModuleInit {
       // job_daily_rollup parametre alıyor ama varsayılanı (current_date - 1).
       // Bu yüzden direkt çağırabiliriz.
       await this.dataSource.query('SELECT job_daily_rollup();');
+
+      // Run XP penalties and life reductions after the DB rollup
+      await this.routinePenaltyService.checkAndApplyPenalties();
 
       this.events$.next({
         type: 'DAILY_ROLLUP_COMPLETED',
