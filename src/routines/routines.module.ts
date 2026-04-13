@@ -17,6 +17,7 @@ import { RoutinesController } from './routines.controller';
 import { RoutinesService } from './routines.service';
 import { CollaborativeRoutineLogsService } from './collaborative-routine-logs.service';
 import { CollaborativeChatController } from './collaborative-chat.controller';
+import { RoutinePenaltyService } from './routine-penalty.service';
 
 import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
 import { AiService } from 'src/ai/ai.service';
@@ -60,7 +61,8 @@ import { DueReminder } from './due-reminders.entity';
     CollaborativeChatService,
     CollaborativeRoutineLogsService,
     AiService,
+    RoutinePenaltyService,
   ],
-  exports: [RoutinesService, CollaborativeRoutineLogsService],
+  exports: [RoutinesService, CollaborativeRoutineLogsService, RoutinePenaltyService],
 })
 export class RoutinesModule {}

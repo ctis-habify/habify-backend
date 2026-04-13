@@ -4,11 +4,10 @@ import { SchedulerService } from './scheduler.service.js';
 import { SchedulerController } from './scheduler.controller.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { RoutinesModule } from '../routines/routines.module';
+
 @Module({
-  imports: [
-    ScheduleModule.forRoot(),
-    TypeOrmModule.forFeature([]), // No specific repositories needed if we run raw queries via DataSource or inject DataSource globally, but usually useful to have available.
-  ],
+  imports: [ScheduleModule.forRoot(), TypeOrmModule.forFeature([]), RoutinesModule],
   controllers: [SchedulerController],
   providers: [SchedulerService],
 })

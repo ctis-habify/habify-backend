@@ -60,6 +60,26 @@ export class XpLogsService {
     return newLog;
   }
 
+  async deductXP(userId: string, amount: number, eventType: string): Promise<XpLog | undefined> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) return undefined;
+
+    const deduction = Math.abs(amount);
+
+    const newLog = this.xpLogRepository.create({
+      amount: -deduction,
+      eventType: eventType,
+      user: user,
+    });
+
+    await this.xpLogRepository.save(newLog);
+
+    user.totalXp = Math.max(0, (user.totalXp || 0) - deduction);
+    await this.userRepository.save(user);
+
+    return newLog;
+  }
+
   async getTotalXp(userId: string): Promise<number> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     return user ? user.totalXp || 0 : 0;
