@@ -1,9 +1,12 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CollaborativeChatMessage } from './collaborative-chat-message.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { PREDEFINED_CHAT_MESSAGES } from './predefined-chat-messages';
+import {
+  PREDEFINED_CHAT_MESSAGES_CATEGORIZED,
+  type PredefinedChatMessageItem,
+} from './predefined-chat-messages';
 
 @Injectable()
 export class CollaborativeChatService {
@@ -27,12 +30,16 @@ export class CollaborativeChatService {
     userId: string,
     message: string,
   ): Promise<CollaborativeChatMessage> {
-    if (!PREDEFINED_CHAT_MESSAGES.includes(message)) {
-      throw new ForbiddenException('Only predefined messages are allowed');
+    const normalizedMessage = (message || '').trim();
+    if (!normalizedMessage) {
+      throw new BadRequestException('Message is required');
+    }
+    if (normalizedMessage.length > 160) {
+      throw new BadRequestException('Message is too long');
     }
     const routine = await this.routineRepo.findOne({ where: { id: routineId } });
     if (!routine) throw new NotFoundException('Routine not found');
-    const chat = this.chatRepo.create({ routineId, userId, message });
+    const chat = this.chatRepo.create({ routineId, userId, message: normalizedMessage });
     return this.chatRepo.save(chat);
   }
 
@@ -51,7 +58,7 @@ export class CollaborativeChatService {
     return this.chatRepo.save(chat);
   }
 
-  getPredefinedMessages(): string[] {
-    return PREDEFINED_CHAT_MESSAGES;
+  getPredefinedMessages(): PredefinedChatMessageItem[] {
+    return PREDEFINED_CHAT_MESSAGES_CATEGORIZED;
   }
 }

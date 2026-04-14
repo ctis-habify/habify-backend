@@ -4,6 +4,13 @@ import { CollaborativeChatService } from './collaborative-chat.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { Request } from 'express';
 import { CollaborativeChatMessage } from './collaborative-chat-message.entity';
+import type { PredefinedChatMessageItem } from './predefined-chat-messages';
+
+type AuthenticatedRequest = Request & {
+  user: {
+    id: string;
+  };
+};
 
 @ApiTags('routines')
 @ApiBearerAuth('access-token')
@@ -13,7 +20,7 @@ export class CollaborativeChatController {
 
   @UseGuards(AuthGuard)
   @Get('predefined')
-  getPredefinedMessages(): string[] {
+  getPredefinedMessages(): PredefinedChatMessageItem[] {
     return this.chatService.getPredefinedMessages();
   }
 
@@ -27,7 +34,7 @@ export class CollaborativeChatController {
   @Post(':routineId')
   async sendMessage(
     @Param('routineId') routineId: string,
-    @Req() req: Request,
+    @Req() req: AuthenticatedRequest,
     @Body('message') message: string,
   ): Promise<CollaborativeChatMessage> {
     const userId = req.user.id;
