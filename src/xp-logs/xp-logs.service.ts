@@ -42,13 +42,17 @@ export class XpLogsService {
     };
   }
 
-  async awardXP(userId: string, amount: number = 10): Promise<XpLog | undefined> {
+  async awardXP(
+    userId: string,
+    amount: number = 10,
+    eventType: string = 'PERSONAL',
+  ): Promise<XpLog | undefined> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) return undefined;
 
     const newLog = this.xpLogRepository.create({
       amount: amount,
-      eventType: 'PERSONAL',
+      eventType,
       user: user,
     });
 
