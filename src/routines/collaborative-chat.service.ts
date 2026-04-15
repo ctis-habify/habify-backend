@@ -27,12 +27,25 @@ export class CollaborativeChatService {
     userId: string,
     message: string,
   ): Promise<CollaborativeChatMessage> {
-    if (!PREDEFINED_CHAT_MESSAGES.includes(message)) {
+    const normalizedMessage = message.trim();
+    const hasValidPredefinedBody = PREDEFINED_CHAT_MESSAGES.some((predefinedMessage) => {
+      if (normalizedMessage === predefinedMessage) {
+        return true;
+      }
+
+      return normalizedMessage.startsWith(`${predefinedMessage} @`);
+    });
+
+    if (!hasValidPredefinedBody) {
       throw new ForbiddenException('Only predefined messages are allowed');
     }
     const routine = await this.routineRepo.findOne({ where: { id: routineId } });
     if (!routine) throw new NotFoundException('Routine not found');
-    const chat = this.chatRepo.create({ routineId, userId, message });
+    const chat = this.chatRepo.create({
+      routineId,
+      userId,
+      message: normalizedMessage,
+    });
     return this.chatRepo.save(chat);
   }
 
