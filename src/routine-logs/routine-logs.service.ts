@@ -11,7 +11,7 @@ import { UsersService } from 'src/users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 const STREAK_BONUS_STEP = 5;
-const STREAK_BONUS_POINTS = 10;
+const STREAK_BONUS_POINTS_PER_STEP = 10;
 
 @Injectable()
 export class RoutineLogsService {
@@ -99,7 +99,7 @@ export class RoutineLogsService {
       await this.xpLogsService.awardXP(userId, 10, 'PERSONAL');
 
       if (routine.streak > 0 && routine.streak % STREAK_BONUS_STEP === 0) {
-        streakBonusPoints = STREAK_BONUS_POINTS;
+        streakBonusPoints = this.getStreakBonusPoints(routine.streak);
         await this.xpLogsService.awardXP(userId, streakBonusPoints, 'PERSONAL_STREAK_BONUS');
       }
 
@@ -167,5 +167,13 @@ export class RoutineLogsService {
         isDone: true,
       };
     });
+  }
+
+  private getStreakBonusPoints(streak: number): number {
+    if (streak < STREAK_BONUS_STEP) {
+      return 0;
+    }
+
+    return Math.floor(streak / STREAK_BONUS_STEP) * STREAK_BONUS_POINTS_PER_STEP;
   }
 }
