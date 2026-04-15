@@ -214,6 +214,6 @@ export class CollaborativeScoreService {
       return STREAK_BONUS_POINTS_PER_STEP;
     }
 
-    return STREAK_BONUS_POINTS_PER_STEP;
+    return Math.floor(streak / STREAK_BONUS_STEP) * STREAK_BONUS_POINTS_PER_STEP;
   }
 }
