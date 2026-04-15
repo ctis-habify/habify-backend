@@ -8,6 +8,10 @@ import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { GcsService } from 'src/storage/gcs.service';
 import { AiService } from 'src/ai/ai.service';
 import { UsersService } from 'src/users/users.service';
+import { NotificationsService } from '../notifications/notifications.service';
+
+const STREAK_BONUS_STEP = 5;
+const STREAK_BONUS_POINTS = 10;
 
 @Injectable()
 export class RoutineLogsService {
@@ -22,6 +26,7 @@ export class RoutineLogsService {
     private readonly gcsService: GcsService,
     private readonly aiService: AiService,
     private readonly usersService: UsersService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(
@@ -72,6 +77,7 @@ export class RoutineLogsService {
     if (savedLog.isVerified) {
       // 2. Update Routine status for immediate feedback
       const today = new Date().toISOString().split('T')[0];
+      let streakBonusPoints = 0;
 
       if (routine.lastCompletedDate !== today) {
         const yesterday = new Date();
@@ -90,8 +96,32 @@ export class RoutineLogsService {
       await this.routinesRepository.save(routine);
 
       // 3. Award XP
+      await this.xpLogsService.awardXP(userId, 10, 'PERSONAL');
 
-      await this.xpLogsService.awardXP(userId, 10);
+      if (routine.streak > 0 && routine.streak % STREAK_BONUS_STEP === 0) {
+        streakBonusPoints = STREAK_BONUS_POINTS;
+        await this.xpLogsService.awardXP(userId, streakBonusPoints, 'PERSONAL_STREAK_BONUS');
+      }
+
+      if (streakBonusPoints > 0) {
+        try {
+          await this.notificationsService.createAndPush({
+            userId,
+            type: 'streak_bonus',
+            title: `${routine.streak}-Day Streak Bonus!`,
+            body: `You completed a ${routine.streak}-day streak in "${routine.routineName}" and earned ${streakBonusPoints} bonus XP.`,
+            routineId: routine.id,
+            data: {
+              status: 'streak_bonus_awarded',
+              completionStreak: routine.streak,
+              streakBonusPoints,
+              milestoneDays: routine.streak,
+            },
+          });
+        } catch {
+          // best-effort notification
+        }
+      }
     }
 
     return savedLog;

@@ -302,6 +302,7 @@ export class NotificationsService {
     body: string;
     routineId?: string | null;
     collaborativeRoutineId?: string | null;
+    data?: Record<string, string | number | boolean | null>;
   }): Promise<Notification> {
     const notification = this.notificationRepo.create({
       userId: opts.userId,
@@ -314,11 +315,15 @@ export class NotificationsService {
       pushSent: false,
     });
     const saved = await this.notificationRepo.save(notification);
-    await this.sendPushNotification(opts.userId, saved);
+    await this.sendPushNotification(opts.userId, saved, opts.data);
     return saved;
   }
 
-  private async sendPushNotification(userId: string, notification: Notification): Promise<void> {
+  private async sendPushNotification(
+    userId: string,
+    notification: Notification,
+    data?: Record<string, string | number | boolean | null>,
+  ): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user?.fcmToken) return;
 
@@ -331,7 +336,9 @@ export class NotificationsService {
         data: {
           notificationId: notification.id,
           routineId: notification.routineId,
+          collaborativeRoutineId: notification.collaborativeRoutineId,
           type: notification.type,
+          ...data,
         },
       });
 

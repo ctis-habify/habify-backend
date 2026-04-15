@@ -10,6 +10,7 @@ import { StorageModule } from 'src/storage/storage.module';
 import { AiModule } from 'src/ai/ai.module';
 import { UsersModule } from 'src/users/users.module';
 import { RoutinesModule } from '../routines/routines.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { RoutinesModule } from '../routines/routines.module';
     StorageModule,
     AiModule,
     UsersModule,
+    NotificationsModule,
     forwardRef(() => RoutinesModule),
   ],
   controllers: [RoutineLogsController],

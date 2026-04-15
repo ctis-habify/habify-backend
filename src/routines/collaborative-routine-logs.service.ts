@@ -19,6 +19,9 @@ import { CollaborativeScoreService } from '../collaborative-score/collaborative-
 import { RoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
 import { CollaborativeChatService } from './collaborative-chat.service';
 
+const STREAK_BONUS_STEP = 5;
+const STREAK_BONUS_POINTS_PER_STEP = 10;
+
 @Injectable()
 export class CollaborativeRoutineLogsService {
   private readonly logger = new Logger(CollaborativeRoutineLogsService.name);
@@ -205,6 +208,7 @@ export class CollaborativeRoutineLogsService {
     await this.logsRepository.save(log);
 
     let completionStreak: number | undefined;
+    let streakBonusPoints = 0;
     if (isFirstTimeVerified) {
       const submitterMembership = await this.memberRepository.findOne({
         where: { userId: log.userId, collaborativeRoutineId: log.routine.id },
@@ -229,8 +233,20 @@ export class CollaborativeRoutineLogsService {
         completionStreak = submitterMembership.streak;
       }
 
-      await this.xpLogsService.awardXP(log.userId, log.routine.completionXp || 10);
-      await this.collaborativeScoreService.addPoints(log.userId, log.routine.completionXp || 10);
+      const basePoints = log.routine.completionXp || 10;
+
+      await this.xpLogsService.awardXP(log.userId, basePoints, 'COLLABORATIVE');
+      await this.collaborativeScoreService.addPoints(log.userId, basePoints);
+
+      if (completionStreak && completionStreak % STREAK_BONUS_STEP === 0) {
+        streakBonusPoints = this.getStreakBonusPoints(completionStreak);
+        await this.xpLogsService.awardXP(
+          log.userId,
+          streakBonusPoints,
+          'COLLABORATIVE_STREAK_BONUS',
+        );
+        await this.collaborativeScoreService.addPoints(log.userId, streakBonusPoints);
+      }
 
       try {
         const submitter = await this.usersService.findById(log.userId);
@@ -239,6 +255,14 @@ export class CollaborativeRoutineLogsService {
           log.userId,
           `${submitter?.name || 'A member'} completed "${log.routine.routineName}" (${log.approvals.length}/${requiredApprovals} approvals).`,
         );
+
+        if (streakBonusPoints > 0) {
+          await this.collaborativeChatService.sendSystemMessage(
+            log.routine.id,
+            log.userId,
+            `${submitter?.name || 'A member'} reached a ${completionStreak}-day streak and earned a ${streakBonusPoints}-point bonus.`,
+          );
+        }
       } catch {
         // best-effort system chat message
       }
@@ -256,7 +280,30 @@ export class CollaborativeRoutineLogsService {
         title,
         body,
         collaborativeRoutineId: log.routine.id,
+        data: {
+          status,
+          isCompletedByGroup: isFirstTimeVerified,
+          completionStreak: isFirstTimeVerified ? completionStreak || 1 : null,
+          awardedPoints: isFirstTimeVerified ? log.routine.completionXp || 10 : 0,
+          streakBonusPoints,
+        },
       });
+
+      if (isFirstTimeVerified && streakBonusPoints > 0) {
+        await this.notificationsService.createAndPush({
+          userId: log.userId,
+          type: 'streak_bonus',
+          title: `${completionStreak}-Day Streak Bonus!`,
+          body: `You completed a ${completionStreak}-day streak in "${log.routine.routineName}" and earned ${streakBonusPoints} bonus points.`,
+          collaborativeRoutineId: log.routine.id,
+          data: {
+            status: 'streak_bonus_awarded',
+            completionStreak: completionStreak || 0,
+            streakBonusPoints,
+            milestoneDays: completionStreak || 0,
+          },
+        });
+      }
     } catch {
       // log error but don't fail the verification
     }
@@ -266,10 +313,22 @@ export class CollaborativeRoutineLogsService {
       message: `Log ${status} successfully`,
       isCompletedByGroup: isFirstTimeVerified,
       awardedXp: isFirstTimeVerified ? log.routine.completionXp || 10 : 0,
+      streakBonusPoints,
+      totalAwardedPoints: isFirstTimeVerified
+        ? (log.routine.completionXp || 10) + streakBonusPoints
+        : 0,
       completionStreak: isFirstTimeVerified ? completionStreak || 1 : undefined,
       completedUserId: isFirstTimeVerified ? log.userId : undefined,
       completedUserName: isFirstTimeVerified ? completedUser?.name || 'Member' : undefined,
     };
+  }
+
+  private getStreakBonusPoints(streak: number): number {
+    if (streak < STREAK_BONUS_STEP) {
+      return 0;
+    }
+
+    return STREAK_BONUS_POINTS_PER_STEP;
   }
 
   async getLogsByRoutine(routineId: string): Promise<Record<string, unknown>[]> {

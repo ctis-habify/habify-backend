@@ -16,11 +16,8 @@ const CUP_TIER_CONFIG = [
   { tier: 'bronze', label: 'Bronze Cup', minWins: 1, nextMilestone: 10 },
 ] as const;
 
-const LEADERBOARD_MEDALS: Record<number, string> = {
-  1: 'gold',
-  2: 'silver',
-  3: 'bronze',
-};
+const STREAK_BONUS_STEP = 5;
+const STREAK_BONUS_POINTS_PER_STEP = 10;
 
 @Injectable()
 export class CollaborativeScoreService {
@@ -55,6 +52,8 @@ export class CollaborativeScoreService {
     const summary = new ScoreSummaryDto();
     summary.totalPoints = score.totalPoints;
     summary.currentStreak = currentStreak;
+    summary.nextBonusStreak = this.getNextBonusStreak(currentStreak);
+    summary.nextBonusPoints = this.getBonusPointsForStreak(summary.nextBonusStreak);
     summary.cup = cupMap[userId] ?? null;
     summary.cupTier = summary.cup?.tier ?? null;
     return summary;
@@ -193,6 +192,28 @@ export class CollaborativeScoreService {
   }
 
   private getLeaderboardMedal(rank: number): string | null {
-    return LEADERBOARD_MEDALS[rank] ?? null;
+    switch (rank) {
+      case 1:
+        return 'gold';
+      case 2:
+        return 'silver';
+      case 3:
+        return 'bronze';
+      default:
+        return null;
+    }
+  }
+
+  private getNextBonusStreak(currentStreak: number): number {
+    const currentStep = Math.floor(Math.max(currentStreak, 0) / STREAK_BONUS_STEP);
+    return (currentStep + 1) * STREAK_BONUS_STEP;
+  }
+
+  private getBonusPointsForStreak(streak: number): number {
+    if (streak < STREAK_BONUS_STEP) {
+      return STREAK_BONUS_POINTS_PER_STEP;
+    }
+
+    return STREAK_BONUS_POINTS_PER_STEP;
   }
 }
