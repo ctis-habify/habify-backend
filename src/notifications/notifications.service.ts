@@ -398,7 +398,7 @@ export class NotificationsService {
       throw new BadRequestException('Target user is not a member of this routine');
     }
 
-    // Rate-limit: prevent duplicate pokes within 10 minutes
+    /* Rate-limit: prevent duplicate pokes within 10 minutes - DISABLED for Infinite Poking
     const recentPoke = await this.notificationRepo
       .createQueryBuilder('n')
       .where('n.user_id = :toUserId', { toUserId })
@@ -417,6 +417,7 @@ export class NotificationsService {
         'You already poked this user recently. Please wait before poking again.',
       );
     }
+    */
 
     // Send the poke notification + push notification.
     // createAndPush() persists the notification in the DB and sends a real push
