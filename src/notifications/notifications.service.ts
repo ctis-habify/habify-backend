@@ -398,26 +398,7 @@ export class NotificationsService {
       throw new BadRequestException('Target user is not a member of this routine');
     }
 
-    /* Rate-limit: prevent duplicate pokes within 10 minutes - DISABLED for Infinite Poking
-    const recentPoke = await this.notificationRepo
-      .createQueryBuilder('n')
-      .where('n.user_id = :toUserId', { toUserId })
-      .andWhere('n.type = :type', { type: 'poke' })
-      .andWhere('n.collaborative_routine_id = :collaborativeRoutineId', {
-        collaborativeRoutineId,
-      })
-      .andWhere("n.created_at > NOW() - INTERVAL '10 minutes'")
-      .andWhere('n.body LIKE :senderPattern', {
-        senderPattern: `%poked you%`,
-      })
-      .getOne();
-
-    if (recentPoke) {
-      throw new BadRequestException(
-        'You already poked this user recently. Please wait before poking again.',
-      );
-    }
-    */
+    // Rate-limit check removed to support "Infinite Poke" functionality as requested.
 
     // Send the poke notification + push notification.
     // createAndPush() persists the notification in the DB and sends a real push
@@ -480,5 +461,24 @@ export class NotificationsService {
 
   async removePushToken(userId: string): Promise<void> {
     await this.userRepo.update(userId, { fcmToken: '' });
+  }
+
+  /**
+   * Deletes notifications older than 30 days.
+   */
+  async cleanup(): Promise<number> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const result = await this.notificationRepo
+      .createQueryBuilder()
+      .delete()
+      .from(Notification)
+      .where('created_at < :date', { date: thirtyDaysAgo })
+      .execute();
+
+    const deletedCount = result.affected ?? 0;
+    this.logger.log(`Cleanup: Deleted ${deletedCount} notifications older than ${thirtyDaysAgo.toISOString()}`);
+    return deletedCount;
   }
 }

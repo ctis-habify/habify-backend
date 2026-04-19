@@ -1,5 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { Storage, Bucket } from '@google-cloud/storage';
+import { Storage, Bucket, StorageOptions } from '@google-cloud/storage';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -24,7 +24,7 @@ export class GcsService {
       return;
     }
 
-    const storageOptions: any = { projectId };
+    const storageOptions: StorageOptions = { projectId };
 
     if (gcsKeyJson && gcsKeyJson.startsWith('{')) {
       try {

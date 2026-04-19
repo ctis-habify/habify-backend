@@ -26,6 +26,9 @@ export class ProfileResponseDto {
   @ApiProperty({ example: 1250 })
   totalXp: number;
 
+  @ApiProperty({ example: 3 })
+  dailyStreak: number;
+
   @ApiProperty({ type: [UserSearchResultDto] })
   friends: UserSearchResultDto[];
 }

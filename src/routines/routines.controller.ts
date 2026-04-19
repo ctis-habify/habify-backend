@@ -112,9 +112,13 @@ export class RoutinesController {
     @Query('search') search?: string,
     @Query('categoryId') categoryId?: number,
     @Query('frequencyType') frequencyType?: string,
+    @Query('gender') gender?: string,
+    @Query('age') age?: number,
+    @Query('xp') xp?: number,
+    @Query('memberId') memberId?: string,
   ): Promise<PublicCollaborativeRoutineResponseDto[]> {
     const userId = this.getUserId(req);
-    return this.routinesService.browsePublicRoutines(userId, search, categoryId, frequencyType);
+    return this.routinesService.browsePublicRoutines(userId, search, categoryId, frequencyType, gender, age, xp, memberId);
   }
 
   @UseGuards(AuthGuard)
@@ -232,13 +236,8 @@ export class RoutinesController {
   @UseGuards(AuthGuard)
   @Get('today')
   async getTodayRoutines(@Req() req: Request): Promise<TodayScreenResponseDto> {
-    const userId = this.getUserId(req); // Accessing user ID from the token
-    // 1. Get Routines
-    const routines = await this.routinesService.getTodayRoutines(userId);
-
-    return {
-      routines: routines,
-    };
+    const userId = this.getUserId(req);
+    return this.routinesService.getTodayRoutines(userId);
   }
 
   @UseGuards(AuthGuard)

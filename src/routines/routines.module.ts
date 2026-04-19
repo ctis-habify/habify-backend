@@ -30,6 +30,8 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
 import { CollaborativeScoreModule } from 'src/collaborative-score/collaborative-score.module';
 
 import { DueReminder } from './due-reminders.entity';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { DueReminder } from './due-reminders.entity';
     UsersModule,
     NotificationsModule,
     CollaborativeScoreModule,
+    AuditLogsModule,
+
     // TypeORM repository'ler
     TypeOrmModule.forFeature([
       Routine,
