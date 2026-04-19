@@ -112,9 +112,10 @@ export class RoutinesController {
     @Query('search') search?: string,
     @Query('categoryId') categoryId?: number,
     @Query('frequencyType') frequencyType?: string,
+    @Query('memberId') memberId?: string,
   ): Promise<PublicCollaborativeRoutineResponseDto[]> {
     const userId = this.getUserId(req);
-    return this.routinesService.browsePublicRoutines(userId, search, categoryId, frequencyType);
+    return this.routinesService.browsePublicRoutines(userId, search, categoryId, frequencyType, memberId);
   }
 
   @UseGuards(AuthGuard)

@@ -5,9 +5,17 @@ import { SchedulerController } from './scheduler.controller.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { RoutinesModule } from '../routines/routines.module';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+
 
 @Module({
-  imports: [ScheduleModule.forRoot(), TypeOrmModule.forFeature([]), RoutinesModule],
+  imports: [
+    ScheduleModule.forRoot(),
+    TypeOrmModule.forFeature([]),
+    RoutinesModule,
+    AuditLogsModule,
+  ],
+
   controllers: [SchedulerController],
   providers: [SchedulerService],
 })

@@ -4,6 +4,8 @@ import { DataSource } from 'typeorm';
 import { Subject, Observable } from 'rxjs';
 import { Routine } from '../routines/routines.entity';
 import { RoutinePenaltyService } from '../routines/routine-penalty.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {
@@ -13,7 +15,9 @@ export class SchedulerService implements OnModuleInit {
   constructor(
     private readonly dataSource: DataSource,
     private readonly routinePenaltyService: RoutinePenaltyService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
+
 
   async onModuleInit(): Promise<void> {}
 
@@ -40,6 +44,17 @@ export class SchedulerService implements OnModuleInit {
       this.logger.error('Error running job_daily_rollup', error);
     }
   }
+
+  // Her gece 02:00'de audit log temizliği yapar
+  @Cron('0 0 2 * * *')
+  async handleAuditLogCleanup(): Promise<void> {
+    try {
+      await this.auditLogsService.cleanup();
+    } catch (error) {
+      this.logger.error('Error running audit log cleanup', error);
+    }
+  }
+
 
   // Her 5 dakikada bir çalışır
   @Cron('0 */5 * * * *')

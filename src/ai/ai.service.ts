@@ -1,4 +1,4 @@
-import { Injectable, Logger, ServiceUnavailableException, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import axios from 'axios';
 import sharp from 'sharp';
 import type {

@@ -17,7 +17,7 @@ export class VerificationController {
 
   @Post('submit')
   @ApiOkResponse({ type: Verification })
-  async submit(@Body() dto: SubmitVerificationDto, @Req() req: Request): Promise<any> {
+  async submit(@Body() dto: SubmitVerificationDto, @Req() req: Request): Promise<Record<string, unknown>> {
     const userId = req.user.id;
     const saved = await this.verificationService.submit(dto, userId);
 
@@ -39,7 +39,7 @@ export class VerificationController {
   @ApiOkResponse({ type: Verification })
   async getVerification(
     @Param(new ValidationPipe({ transform: true })) params: VerificationRequestDto,
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     const found = await this.verificationService.findOne(params.id);
 
     return {

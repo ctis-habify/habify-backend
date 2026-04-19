@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { RoutineListItemDto } from 'src/common/dto/routines/routine-list-item.dto';
 import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
-import { Between, ILike, LessThanOrEqual, type Repository } from 'typeorm';
+import { Between, LessThanOrEqual, type Repository } from 'typeorm';
 import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { Routine } from './routines.entity';
 import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
@@ -27,6 +27,9 @@ import { RoutineLog } from '../routine-logs/routine-logs.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
 import { RoutineMember } from './routine-members.entity';
 import { CollaborativeScoreService } from 'src/collaborative-score/collaborative-score.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { AuditLogType } from '../audit-logs/audit-log.entity';
+
 
 @Injectable()
 export class RoutinesService {
@@ -54,7 +57,9 @@ export class RoutinesService {
 
     private readonly usersService: UsersService,
     private readonly collaborativeScoreService: CollaborativeScoreService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
+
 
   // List routines by user
   async getUserRoutines(userId: string): Promise<Routine[]> {
@@ -93,10 +98,17 @@ export class RoutinesService {
 
     const saved = await this.routineRepo.save(routine);
 
+    await this.auditLogsService.log('ROUTINE_CREATE', AuditLogType.operational, data.userId, {
+      routineId: saved.id,
+      name: saved.routineName,
+    });
+
+
     // Worker için ilk job
 
     return saved;
   }
+
 
   // Create collaborative routine
   async createCollaborativeRoutine(
@@ -135,8 +147,20 @@ export class RoutinesService {
     });
     await this.memberRepo.save(creatorMember);
 
+    await this.auditLogsService.log(
+      'COLLABORATIVE_ROUTINE_CREATE',
+      AuditLogType.operational,
+      data.userId,
+      {
+        routineId: saved.id,
+        name: saved.routineName,
+      },
+    );
+
+
     return saved;
   }
+
 
   async joinRoutine(userId: string, key: string): Promise<{ message: string }> {
     const routine = await this.collaborativeRoutineRepo.findOne({
@@ -155,31 +179,36 @@ export class RoutinesService {
     search?: string,
     categoryId?: number,
     frequencyType?: string,
+    memberId?: string,
   ): Promise<PublicCollaborativeRoutineResponseDto[]> {
-    const routines = await this.collaborativeRoutineRepo.find({
-      where: {
-        isPublic: true,
-        ...(search ? { routineName: ILike(`%${search}%`) } : {}),
-        ...(categoryId ? { categoryId } : {}),
-        ...(frequencyType ? { frequencyType } : {}),
-      },
-      relations: ['category', 'members'],
-      order: { startDate: 'DESC' },
-    });
+    const qb = this.collaborativeRoutineRepo
+      .createQueryBuilder('routine')
+      .leftJoinAndSelect('routine.category', 'category')
+      .leftJoinAndSelect('routine.members', 'members')
+      .where('routine.isPublic = :isPublic', { isPublic: true })
+      .orderBy('routine.startDate', 'DESC');
 
-    return routines
-      .filter((routine) => !(routine.members ?? []).some((m) => m.userId === userId))
-      .map((routine) => ({
-        id: routine.id,
-        routineName: routine.routineName,
-        description: routine.description ?? null,
-        category: routine.category?.name ?? null,
-        categoryId: routine.categoryId,
-        startDate: routine.startDate,
-        frequencyType: routine.frequencyType,
-        memberCount: routine.members?.length ?? 0,
-        isAlreadyMember: false,
-      }));
+    if (search) qb.andWhere('routine.routineName ILIKE :search', { search: `%${search}%` });
+    if (categoryId) qb.andWhere('routine.categoryId = :categoryId', { categoryId });
+    if (frequencyType) qb.andWhere('routine.frequencyType = :frequencyType', { frequencyType });
+    if (memberId) {
+      // Filter to routines where the target user is a member (via routine_members join table)
+      qb.innerJoin('routine.members', 'targetMember', 'targetMember.userId = :memberId', { memberId });
+    }
+
+    const routines = await qb.getMany();
+
+    return routines.map((routine) => ({
+      id: routine.id,
+      routineName: routine.routineName,
+      description: routine.description ?? null,
+      category: routine.category?.name ?? null,
+      categoryId: routine.categoryId,
+      startDate: routine.startDate,
+      frequencyType: routine.frequencyType,
+      memberCount: routine.members?.length ?? 0,
+      isAlreadyMember: (routine.members ?? []).some((m) => m.userId === userId),
+    }));
   }
 
   async joinPublicRoutine(userId: string, routineId: string): Promise<{ message: string }> {
@@ -413,6 +442,11 @@ export class RoutinesService {
 
     if (personalRoutine) {
       await this.routineRepo.delete(routineId);
+      await this.auditLogsService.log('ROUTINE_DELETE', AuditLogType.operational, userId, {
+        routineId,
+        type: 'personal',
+      });
+
       return { message: 'ROUTINE IS DELETED SUCCESSFULLY' };
     }
 
@@ -423,8 +457,14 @@ export class RoutinesService {
 
     if (collabRoutine) {
       await this.collaborativeRoutineRepo.delete(routineId);
+      await this.auditLogsService.log('ROUTINE_DELETE', AuditLogType.operational, userId, {
+        routineId,
+        type: 'collaborative',
+      });
+
       return { message: 'ROUTINE IS DELETED SUCCESSFULLY' };
     }
+
 
     // 3. If not found in either or not authorized, throw NotFoundException
     throw new NotFoundException('Routine not found or you do not have permission to delete it');

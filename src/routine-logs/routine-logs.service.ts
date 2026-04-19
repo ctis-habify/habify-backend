@@ -77,13 +77,12 @@ export class RoutineLogsService {
     if (savedLog.isVerified) {
       // 2. Update Routine status for immediate feedback
       const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
       let streakBonusPoints = 0;
 
       if (routine.lastCompletedDate !== today) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-
         if (routine.lastCompletedDate === yesterdayStr) {
           routine.streak += 1;
         } else {
@@ -120,6 +119,19 @@ export class RoutineLogsService {
           });
         } catch {
           // best-effort notification
+        }
+      }
+
+      // Check if ALL active daily routines are done today → update user daily streak
+      const allRoutines = await this.routinesRepository.find({ where: { userId, active: true } });
+      const dailyRoutines = allRoutines.filter((r) => r.frequencyType.toLowerCase() === 'daily');
+      const allDoneToday = dailyRoutines.length > 0 && dailyRoutines.every((r) => r.lastCompletedDate === today);
+
+      if (allDoneToday) {
+        const user = await this.usersService.findById(userId);
+        if (user && user.lastStreakDate !== today) {
+          const newStreak = user.lastStreakDate === yesterdayStr ? user.dailyStreak + 1 : 1;
+          await this.usersService.setDailyStreak(userId, newStreak, today);
         }
       }
     }

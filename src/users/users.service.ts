@@ -101,6 +101,7 @@ export class UsersService {
     dto.birthDate = user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null;
     dto.avatarUrl = user.avatarUrl;
     dto.totalXp = user.totalXp;
+    dto.dailyStreak = user.dailyStreak;
     dto.friends = friends;
 
     return dto;
@@ -138,7 +139,7 @@ export class UsersService {
     dto.birthDate = user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null;
     dto.avatarUrl = user.avatarUrl;
     dto.totalXp = user.totalXp;
-    dto.currentStreak = 0;
+    dto.currentStreak = user.dailyStreak;
     dto.createdAt = user.createdAt;
     dto.updatedAt = user.updatedAt;
     dto.friends = friends;
@@ -193,6 +194,14 @@ export class UsersService {
     });
 
     return this.usersRepo.save(user);
+  }
+
+  async setDailyStreak(userId: string, dailyStreak: number, lastStreakDate: string): Promise<void> {
+    await this.usersRepo.update(userId, { dailyStreak, lastStreakDate });
+  }
+
+  async resetDailyStreak(userId: string): Promise<void> {
+    await this.usersRepo.update(userId, { dailyStreak: 0 });
   }
 
   // Updates user's last login timestamp
