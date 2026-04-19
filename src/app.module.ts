@@ -19,6 +19,8 @@ import { FriendRequestsModule } from './friend-requests/friend-requests.module';
 import { RoutineInvitationsModule } from './routine-invitations/routine-invitations.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CollaborativeScoreModule } from './collaborative-score/collaborative-score.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
+
 
 @Module({
   imports: [
@@ -53,7 +55,9 @@ import { CollaborativeScoreModule } from './collaborative-score/collaborative-sc
     RoutineInvitationsModule,
     NotificationsModule,
     CollaborativeScoreModule,
+    AuditLogsModule,
   ],
+
   controllers: [AppController],
   providers: [AppService],
 })

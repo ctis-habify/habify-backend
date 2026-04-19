@@ -44,6 +44,12 @@ export class User {
   @Column({ name: 'total_xp', type: 'int', default: 0 })
   totalXp: number;
 
+  @Column({ name: 'daily_streak', type: 'int', default: 0 })
+  dailyStreak: number;
+
+  @Column({ name: 'last_streak_date', type: 'date', nullable: true })
+  lastStreakDate: string | null;
+
   @Column({ name: 'avatar_url', type: 'varchar', nullable: true })
   avatarUrl: string | null;
 

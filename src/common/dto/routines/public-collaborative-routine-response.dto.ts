@@ -27,4 +27,13 @@ export class PublicCollaborativeRoutineResponseDto {
 
   @ApiProperty({ example: false })
   isAlreadyMember: boolean;
+
+  @ApiProperty({ example: 18, nullable: true })
+  ageRequirement: number | null;
+
+  @ApiProperty({ example: 'female', nullable: true })
+  genderRequirement: string | null;
+
+  @ApiProperty({ example: 100, nullable: true })
+  xpRequirement: number | null;
 }

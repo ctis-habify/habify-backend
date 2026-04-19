@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, Between } from 'typeorm';
+import { Repository, LessThanOrEqual } from 'typeorm';
 import { Routine } from './routines.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
 import { RoutineMember } from './routine-members.entity';
@@ -56,6 +56,8 @@ export class RoutinePenaltyService {
       },
     });
 
+    const missedUserIds = new Set<string>();
+
     for (const routine of personalRoutines) {
       if (routine.lastCompletedDate !== yesterdayStr) {
         // Double check if it was actually supposed to be done yesterday (daily check)
@@ -77,10 +79,16 @@ export class RoutinePenaltyService {
 
           // Increment missed count if not already done by DB
           routine.missedCount += 1;
-          routine.streak = 0; // Reset streak on miss
+          routine.streak = 0; // Reset routine streak on miss
           await this.routineRepo.save(routine);
+          missedUserIds.add(routine.userId);
         }
       }
+    }
+
+    // Any miss resets the user's daily streak
+    for (const uid of missedUserIds) {
+      await this.userRepo.update(uid, { dailyStreak: 0 });
     }
   }
 

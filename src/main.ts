@@ -3,12 +3,14 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as dotenv from 'dotenv';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 dotenv.config();
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   app.enableCors(); // Expo ve diğer cihazların erişebilmesi için gerekli
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // DTO validation
   app.useGlobalPipes(
