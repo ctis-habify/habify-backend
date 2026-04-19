@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { RoutinesModule } from '../routines/routines.module';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 
 @Module({
@@ -14,6 +15,7 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
     TypeOrmModule.forFeature([]),
     RoutinesModule,
     AuditLogsModule,
+    NotificationsModule,
   ],
 
   controllers: [SchedulerController],

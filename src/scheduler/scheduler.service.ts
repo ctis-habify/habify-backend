@@ -5,6 +5,7 @@ import { Subject, Observable } from 'rxjs';
 import { Routine } from '../routines/routines.entity';
 import { RoutinePenaltyService } from '../routines/routine-penalty.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 
 @Injectable()
@@ -16,6 +17,7 @@ export class SchedulerService implements OnModuleInit {
     private readonly dataSource: DataSource,
     private readonly routinePenaltyService: RoutinePenaltyService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
 
@@ -52,6 +54,16 @@ export class SchedulerService implements OnModuleInit {
       await this.auditLogsService.cleanup();
     } catch (error) {
       this.logger.error('Error running audit log cleanup', error);
+    }
+  }
+
+  // Her gece 03:00'te bildirim temizliği yapar
+  @Cron('0 0 3 * * *')
+  async handleNotificationCleanup(): Promise<void> {
+    try {
+      await this.notificationsService.cleanup();
+    } catch (error) {
+      this.logger.error('Error running notification cleanup', error);
     }
   }
 

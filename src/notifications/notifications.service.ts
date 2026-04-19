@@ -480,4 +480,23 @@ export class NotificationsService {
   async removePushToken(userId: string): Promise<void> {
     await this.userRepo.update(userId, { fcmToken: '' });
   }
+
+  /**
+   * Deletes notifications older than 30 days.
+   */
+  async cleanup(): Promise<number> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const result = await this.notificationRepo
+      .createQueryBuilder()
+      .delete()
+      .from(Notification)
+      .where('created_at < :date', { date: thirtyDaysAgo })
+      .execute();
+
+    const deletedCount = result.affected ?? 0;
+    this.logger.log(`Cleanup: Deleted ${deletedCount} notifications older than ${thirtyDaysAgo.toISOString()}`);
+    return deletedCount;
+  }
 }
