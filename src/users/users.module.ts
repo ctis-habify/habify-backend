@@ -6,11 +6,21 @@ import { UsersController } from './users.controller';
 import { AuthModule } from 'src/auth/auth.module';
 import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
 import { FriendRequest } from 'src/friend-requests/friend-requests.entity';
+import { Routine } from 'src/routines/routines.entity';
+import { CollaborativeRoutine } from 'src/routines/collaborative-routines.entity';
+import { RoutineMember } from 'src/routines/routine-members.entity';
 
 @Module({
   imports: [
     forwardRef(() => AuthModule),
-    TypeOrmModule.forFeature([User, RoutineLog, FriendRequest]),
+    TypeOrmModule.forFeature([
+      User,
+      RoutineLog,
+      FriendRequest,
+      Routine,
+      CollaborativeRoutine,
+      RoutineMember,
+    ]),
   ],
   controllers: [UsersController],
   providers: [UsersService],

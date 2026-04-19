@@ -4,4 +4,7 @@ import { RoutineResponseDto } from './routine-response.dto';
 export class TodayScreenResponseDto {
   @ApiProperty({ type: [RoutineResponseDto] })
   routines: RoutineResponseDto[];
+
+  @ApiProperty({ example: 5 })
+  streak: number;
 }

@@ -589,7 +589,7 @@ export class RoutinesService {
     return `${remainingMinutes} Minutes`;
   }
 
-  async getTodayRoutines(userId: string): Promise<RoutineResponseDto[]> {
+  async getTodayRoutines(userId: string): Promise<TodayScreenResponseDto> {
     const today = new Date();
     const todayString = today.toISOString().split('T')[0];
 
@@ -689,7 +689,29 @@ export class RoutinesService {
         };
       });
 
-    return [...personalResults, ...collabResults];
+    const routines = [...personalResults, ...collabResults];
+
+    // Get User Streak
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    let streak = user?.dailyStreak ?? 0;
+
+    // Real-time failure check: if ANY routine for today has passed its end time and is not completed
+    const hasAnyFailureToday = routines.some((r) => {
+      if (r.isCompleted) return false;
+      const [h, m, s] = r.endTime.split(':').map(Number);
+      const endAt = new Date();
+      endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+      return new Date() > endAt;
+    });
+
+    if (hasAnyFailureToday) {
+      streak = 0;
+    }
+
+    return {
+      routines,
+      streak,
+    };
   }
 
   async viewCollaborativeRoutines(userId: string): Promise<CollaborativeRoutineViewDto[]> {

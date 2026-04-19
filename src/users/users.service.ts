@@ -1,11 +1,14 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, Logger } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from '../common/dto/auth/register.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, DataSource } from 'typeorm';
 import { User } from './users.entity';
 import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
 import { FriendRequest, FriendRequestStatus } from 'src/friend-requests/friend-requests.entity';
+import { Routine } from 'src/routines/routines.entity';
+import { CollaborativeRoutine } from 'src/routines/collaborative-routines.entity';
+import { RoutineMember } from 'src/routines/routine-members.entity';
 import { ProfileResponseDto } from '../common/dto/users/profile-response.dto';
 import { FriendProfileResponseDto } from '../common/dto/users/friend-profile-response.dto';
 import { UpdateProfileDto } from '../common/dto/users/update-profile.dto';
@@ -22,7 +25,20 @@ export class UsersService {
 
     @InjectRepository(FriendRequest)
     private readonly friendRequestsRepo: Repository<FriendRequest>,
+
+    @InjectRepository(Routine)
+    private readonly routinesRepo: Repository<Routine>,
+
+    @InjectRepository(CollaborativeRoutine)
+    private readonly collabRoutinesRepo: Repository<CollaborativeRoutine>,
+
+    @InjectRepository(RoutineMember)
+    private readonly membersRepo: Repository<RoutineMember>,
+
+    private readonly dataSource: DataSource,
   ) {}
+
+  private readonly logger = new Logger(UsersService.name);
 
   // Finds a user by email using the database
   async findByEmail(email: string): Promise<User | null> {
@@ -210,10 +226,57 @@ export class UsersService {
     await this.usersRepo.save(user);
   }
 
-  // Permanently deletes the user's account
+  // Permanently deletes the user's account and handles routine ownership transfer/cleanup
   async deleteAccount(userId: string): Promise<void> {
-    const result = await this.usersRepo.delete(userId);
-    if (!result.affected) throw new NotFoundException('User not found');
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.dataSource.transaction(async (manager) => {
+      // 1. Handle Collaborative Routines where user is the creator
+      const ownedCollabRoutines = await manager.find(CollaborativeRoutine, {
+        where: { creatorId: userId },
+      });
+
+      for (const routine of ownedCollabRoutines) {
+        // Find other members to transfer ownership
+        const otherMembers = await manager.find(RoutineMember, {
+          where: { collaborativeRoutineId: routine.id },
+          order: { joinedAt: 'ASC' },
+        });
+
+        const filteredMembers = otherMembers.filter((m) => m.userId !== userId);
+
+        if (filteredMembers.length > 0) {
+          // Transfer ownership to the oldest member
+          const newCreatorMember = filteredMembers[0];
+          routine.creatorId = newCreatorMember.userId;
+          newCreatorMember.role = 'creator';
+
+          await manager.save(CollaborativeRoutine, routine);
+          await manager.save(RoutineMember, newCreatorMember);
+
+          this.logger.log(
+            `Transferred ownership of group "${routine.routineName}" to user ${newCreatorMember.userId}`,
+          );
+        } else {
+          // User is the only member, delete the group
+          // cascade will handle members and logs
+          await manager.remove(CollaborativeRoutine, routine);
+          this.logger.log(`Deleted solo collaborative routine group "${routine.routineName}"`);
+        }
+      }
+
+      // 2. Delete Personal Routines
+      // Personal logs and notifications will cascade delete if configured in DB,
+      // but we ensure clean removal here.
+      await manager.delete(Routine, { userId });
+      this.logger.log(`Cleaned up personal routines for user ${userId}`);
+
+      // 3. Delete the user
+      // Friend requests, memberships, and notifications will cascade delete due to Entity decorators
+      await manager.delete(User, userId);
+      this.logger.log(`User ${userId} record permanently deleted`);
+    });
   }
 
   // Computes user's age from birthDate
