@@ -20,6 +20,7 @@ import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-res
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
 import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
 import { PublicCollaborativeRoutineResponseDto } from 'src/common/dto/routines/public-collaborative-routine-response.dto';
+import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
 import { RoutineList } from 'src/routine-lists/routine-lists.entity';
 import { Gender, User } from 'src/users/users.entity';
 import { UsersService } from 'src/users/users.service';
@@ -179,6 +180,9 @@ export class RoutinesService {
     search?: string,
     categoryId?: number,
     frequencyType?: string,
+    gender?: string,
+    age?: number,
+    xp?: number,
     memberId?: string,
   ): Promise<PublicCollaborativeRoutineResponseDto[]> {
     const qb = this.collaborativeRoutineRepo
@@ -191,6 +195,9 @@ export class RoutinesService {
     if (search) qb.andWhere('routine.routineName ILIKE :search', { search: `%${search}%` });
     if (categoryId) qb.andWhere('routine.categoryId = :categoryId', { categoryId });
     if (frequencyType) qb.andWhere('routine.frequencyType = :frequencyType', { frequencyType });
+    if (gender) qb.andWhere('routine.genderRequirement = :gender', { gender });
+    if (age) qb.andWhere('routine.ageRequirement <= :age', { age });
+    if (xp) qb.andWhere('routine.xpRequirement <= :xp', { xp });
     if (memberId) {
       // Filter to routines where the target user is a member (via routine_members join table)
       qb.innerJoin('routine.members', 'targetMember', 'targetMember.userId = :memberId', { memberId });
@@ -208,6 +215,9 @@ export class RoutinesService {
       frequencyType: routine.frequencyType,
       memberCount: routine.members?.length ?? 0,
       isAlreadyMember: (routine.members ?? []).some((m) => m.userId === userId),
+      ageRequirement: routine.ageRequirement,
+      genderRequirement: routine.genderRequirement,
+      xpRequirement: routine.xpRequirement,
     }));
   }
 
