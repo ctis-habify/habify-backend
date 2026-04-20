@@ -270,6 +270,25 @@ export class RoutinesController {
   }
 
   @UseGuards(AuthGuard)
+  @Get(':id/calendar')
+  @ApiOperation({ summary: 'Get calendar logs for a personal or collaborative routine' })
+  async getAnyCalendarLogs(
+    @Param('id') id: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Req() req: Request,
+  ): Promise<{ date: string; isDone: boolean }[]> {
+    const userId = this.getUserId(req);
+    
+    const collabRoutine = await this.routinesService.getCollaborativeRoutineById(id);
+    if (collabRoutine) {
+      return this.collaborativeLogs.getCalendarLogs(userId, id, startDate, endDate);
+    }
+    
+    return this.routineLogs.getCalendarLogs(userId, id, startDate, endDate);
+  }
+
+  @UseGuards(AuthGuard)
   @Get(':id/logs')
   async getAnyRoutineLogs(@Param('id') id: string, @Req() req: Request) {
     const userId = this.getUserId(req);
@@ -314,7 +333,7 @@ export class RoutinesController {
     @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: UpdateRoutineDto,
-  ): Promise<Routine> {
+  ): Promise<any> {
     const userId = this.getUserId(req);
     return this.routinesService.updateRoutine(userId, id, dto);
   }

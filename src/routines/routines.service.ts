@@ -310,6 +310,33 @@ export class RoutinesService {
     return age;
   }
 
+  /**
+   * Helper to perform "lazy reset" of streaks if the last completion was more than 1 day ago.
+   * This ensures streaks look correct even if background cron jobs did not run.
+   */
+  private async syncStreak(entity: Routine | RoutineMember): Promise<number> {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    const lastDone = entity.lastCompletedDate;
+    
+    // If never done or missed at least one full day (excluding today/yesterday)
+    if (!lastDone || (lastDone !== todayStr && lastDone !== yesterdayStr)) {
+      if (entity.streak > 0) {
+        entity.streak = 0;
+        if ('routineName' in entity) {
+          await this.routineRepo.update(entity.id, { streak: 0 });
+        } else {
+          await this.memberRepo.update((entity as any).id, { streak: 0 });
+        }
+      }
+      return 0;
+    }
+    return entity.streak;
+  }
+
   async getCollaborativeRoutines(userId: string): Promise<CollaborativeRoutine[]> {
     // Returns routines where user is a member
     const memberships = await this.memberRepo.find({
@@ -415,32 +442,61 @@ export class RoutinesService {
     return { message: 'Member removed successfully' };
   }
 
-  // update routine
-  async updateRoutine(userId: string, routineId: string, dto: UpdateRoutineDto): Promise<Routine> {
-    const routine = await this.routineRepo.findOne({
+  // update routine (Personal or Collaborative)
+  async updateRoutine(
+    userId: string,
+    routineId: string,
+    dto: UpdateRoutineDto,
+  ): Promise<Routine | CollaborativeRoutine> {
+    // 1. Try personal
+    const personalRoutine = await this.routineRepo.findOne({
       where: { id: routineId, userId: userId },
     });
-    if (!routine) {
-      throw new NotFoundException('Routine not found or access denied');
+
+    if (personalRoutine) {
+      const oldFreq = personalRoutine.frequencyType?.toLowerCase();
+      const newFreq = dto.frequencyType?.toLowerCase();
+
+      if (dto.routineName) personalRoutine.routineName = dto.routineName;
+      if (dto.frequencyType) personalRoutine.frequencyType = dto.frequencyType;
+      if (dto.startDate) personalRoutine.startDate = dto.startDate;
+
+      if (oldFreq === 'daily' && newFreq === 'weekly') {
+        personalRoutine.startTime = '00:00:00';
+        personalRoutine.endTime = '23:59:59';
+      } else {
+        if (dto.startTime) personalRoutine.startTime = dto.startTime;
+        if (dto.endTime) personalRoutine.endTime = dto.endTime;
+      }
+
+      return this.routineRepo.save(personalRoutine);
     }
 
-    const oldFreq = routine.frequencyType?.toLowerCase();
-    const newFreq = dto.frequencyType?.toLowerCase();
+    // 2. Try collaborative (only if user is creator)
+    const collabRoutine = await this.collaborativeRoutineRepo.findOne({
+      where: { id: routineId, creatorId: userId },
+    });
 
-    // Mapping manual fields
-    if (dto.routineName) routine.routineName = dto.routineName;
-    if (dto.frequencyType) routine.frequencyType = dto.frequencyType;
-    if (dto.startDate) routine.startDate = dto.startDate;
-    if (oldFreq === 'daily' && newFreq === 'weekly') {
-      routine.startTime = '00:00:00';
-      routine.endTime = '23:59:59';
-    } else {
-      if (dto.startTime) routine.startTime = dto.startTime;
-      if (dto.endTime) routine.endTime = dto.endTime;
+    if (collabRoutine) {
+      const oldFreq = collabRoutine.frequencyType?.toLowerCase();
+      const newFreq = dto.frequencyType?.toLowerCase();
+
+      if (dto.routineName) collabRoutine.routineName = dto.routineName;
+      if (dto.frequencyType) collabRoutine.frequencyType = dto.frequencyType;
+      if (dto.startDate) collabRoutine.startDate = dto.startDate;
+
+      if (oldFreq === 'daily' && newFreq === 'weekly') {
+        collabRoutine.startTime = '00:00:00';
+        collabRoutine.endTime = '23:59:59';
+      } else {
+        if (dto.startTime) collabRoutine.startTime = dto.startTime;
+        if (dto.endTime) collabRoutine.endTime = dto.endTime;
+      }
+
+      return this.collaborativeRoutineRepo.save(collabRoutine);
     }
 
-    const updated = await this.routineRepo.save(routine);
-    return updated;
+    throw new NotFoundException('Routine not found or access denied');
   }
 
   async deleteRoutine(userId: string, routineId: string): Promise<{ message: string }> {
@@ -562,6 +618,9 @@ export class RoutinesService {
           remainingLabel = 'Failed';
         }
 
+        // Apply lazy streak sync
+        const syncedStreak = await this.syncStreak(routine);
+
         routineDtos.push({
           id: routine.id,
           routineName: routine.routineName,
@@ -572,6 +631,7 @@ export class RoutinesService {
           remainingMinutes: remainingMinutes,
           remainingLabel,
           isDone: isDone,
+          streak: syncedStreak,
           routineListId: 0,
         });
       }
@@ -637,72 +697,100 @@ export class RoutinesService {
     const completedPersonalIds = new Set(personalLogs.map((log) => log.routine.id));
 
     // Process Personal Routines
-    const personalResults = personalRoutines
-      .filter(
-        (r) =>
-          r.frequencyType.toLowerCase() === 'daily' || r.frequencyType.toLowerCase() === 'weekly',
-      )
-      .map((routine) => {
-        const [h, m, s] = routine.endTime.split(':').map(Number);
-        const endAt = new Date();
-        endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+    const personalResults: any[] = [];
+    for (const routine of personalRoutines) {
+      if (
+        routine.frequencyType.toLowerCase() !== 'daily' &&
+        routine.frequencyType.toLowerCase() !== 'weekly'
+      ) {
+        continue;
+      }
 
-        const now = new Date();
-        const diffMs = endAt.getTime() - now.getTime();
-        const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+      const [h, m, s] = routine.endTime.split(':').map(Number);
+      const endAt = new Date();
+      endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
 
-        const remainingLabel =
-          routine.frequencyType.toLowerCase() === 'weekly'
-            ? 'Pending'
-            : this.formatRemainingLabel(remainingMinutes);
+      const now = new Date();
+      const diffMs = endAt.getTime() - now.getTime();
+      const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
 
-        return {
-          id: routine.id,
-          title: routine.routineName,
-          category: routine.routineList?.title || 'General',
-          startTime: routine.startTime,
-          endTime: routine.endTime,
-          frequency: routine.frequencyType,
-          isCompleted: completedPersonalIds.has(routine.id),
-          remainingLabel: remainingLabel,
-          streak: routine.streak,
-        };
+      const remainingLabel =
+        routine.frequencyType.toLowerCase() === 'weekly'
+          ? 'Pending'
+          : this.formatRemainingLabel(remainingMinutes);
+
+      const syncedStreak = await this.syncStreak(routine);
+
+      personalResults.push({
+        id: routine.id,
+        title: routine.routineName,
+        category: routine.routineList?.title || 'General',
+        startTime: routine.startTime,
+        endTime: routine.endTime,
+        frequency: routine.frequencyType,
+        isCompleted: completedPersonalIds.has(routine.id),
+        remainingLabel: remainingLabel,
+        streak: syncedStreak,
       });
+    }
 
     // Process Collaborative Routines
-    const collabResults = activeCollabRoutines
-      .filter(
-        (r) =>
-          r.frequencyType.toLowerCase() === 'daily' || r.frequencyType.toLowerCase() === 'weekly',
-      )
-      .map((routine) => {
-        const membership = memberships.find((m) => m.collaborativeRoutineId === routine.id);
-        const [h, m, s] = routine.endTime.split(':').map(Number);
-        const endAt = new Date();
-        endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+    const collabResults: any[] = [];
+    for (const routine of activeCollabRoutines) {
+      if (
+        routine.frequencyType.toLowerCase() !== 'daily' &&
+        routine.frequencyType.toLowerCase() !== 'weekly'
+      ) {
+        continue;
+      }
 
-        const now = new Date();
-        const diffMs = endAt.getTime() - now.getTime();
-        const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+      const membership = memberships.find((m) => m.collaborativeRoutineId === routine.id);
+      if (!membership) continue;
 
-        return {
-          id: routine.id,
-          title: routine.routineName,
-          category: routine.category?.name || 'Group',
-          startTime: routine.startTime,
-          endTime: routine.endTime,
-          frequency: routine.frequencyType,
-          isCompleted: false, // ... would need collab logs here
-          remainingLabel: this.formatRemainingLabel(remainingMinutes),
-          streak: membership?.streak ?? 0,
-        };
+      const [h, m, s] = routine.endTime.split(':').map(Number);
+      const endAt = new Date();
+      endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+
+      const now = new Date();
+      const diffMs = endAt.getTime() - now.getTime();
+      const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+
+      const syncedStreak = await this.syncStreak(membership);
+
+      collabResults.push({
+        id: routine.id,
+        title: routine.routineName,
+        category: routine.category?.name || 'Group',
+        startTime: routine.startTime,
+        endTime: routine.endTime,
+        frequency: routine.frequencyType,
+        isCompleted: false, // ... would need collab logs here
+        remainingLabel: this.formatRemainingLabel(remainingMinutes),
+        streak: syncedStreak,
       });
+    }
 
     const routines = [...personalResults, ...collabResults];
 
     // Get User Streak
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    let streak = user?.dailyStreak ?? 0;
+    if (!user) throw new NotFoundException('User not found');
+
+    let streak = user.dailyStreak ?? 0;
+
+    // Apply Lazy User Streak Reset
+    const todayStr = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    if (user.lastStreakDate && user.lastStreakDate !== todayStr && user.lastStreakDate !== yesterdayStr) {
+      if (user.dailyStreak > 0) {
+        this.logger.log(`Lazy resetting daily streak for user ${userId} (last date was ${user.lastStreakDate})`);
+        await this.userRepo.update(userId, { dailyStreak: 0 });
+        streak = 0;
+      }
+    }
 
     // Real-time failure check: if ANY routine for today has passed its end time and is not completed
     const hasAnyFailureToday = routines.some((r) => {
