@@ -95,7 +95,11 @@ export class RoutineLogsService {
       await this.routinesRepository.save(routine);
 
       // 3. Award XP
-      await this.xpLogsService.awardXP(userId, 10, 'PERSONAL');
+      let xpAmount = 15; // default for daily/other
+      if (routine.frequencyType?.toLowerCase() === 'weekly') {
+        xpAmount = 50;
+      }
+      await this.xpLogsService.awardXP(userId, xpAmount, 'PERSONAL');
 
       if (routine.streak > 0 && routine.streak % STREAK_BONUS_STEP === 0) {
         streakBonusPoints = this.getStreakBonusPoints(routine.streak);
@@ -125,7 +129,8 @@ export class RoutineLogsService {
       // Check if ALL active daily routines are done today → update user daily streak
       const allRoutines = await this.routinesRepository.find({ where: { userId, active: true } });
       const dailyRoutines = allRoutines.filter((r) => r.frequencyType.toLowerCase() === 'daily');
-      const allDoneToday = dailyRoutines.length > 0 && dailyRoutines.every((r) => r.lastCompletedDate === today);
+      const allDoneToday =
+        dailyRoutines.length > 0 && dailyRoutines.every((r) => r.lastCompletedDate === today);
 
       if (allDoneToday) {
         const user = await this.usersService.findById(userId);
