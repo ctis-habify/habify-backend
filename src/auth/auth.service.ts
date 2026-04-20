@@ -103,14 +103,6 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired token.');
     }
 
-    if (!user.resetPasswordToken || user.resetPasswordToken !== dto.token) {
-      throw new BadRequestException('Invalid or expired token.');
-    }
-
-    if (user.resetPasswordExpires && new Date() > user.resetPasswordExpires) {
-      throw new BadRequestException('Invalid or expired token.');
-    }
-
     const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
     await this.usersService.resetUserPassword(user.id, newPasswordHash);
 
