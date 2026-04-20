@@ -18,7 +18,6 @@ import { Category } from 'src/categories/categories.entity';
 import { CreateCollaborativeRoutineDto } from 'src/common/dto/routines/create-collaborative-routine.dto';
 import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
 import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
-import { RoutineResponseDto } from 'src/common/dto/routines/routine-response.dto';
 import { PublicCollaborativeRoutineResponseDto } from 'src/common/dto/routines/public-collaborative-routine-response.dto';
 import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
 import { RoutineList } from 'src/routine-lists/routine-lists.entity';
