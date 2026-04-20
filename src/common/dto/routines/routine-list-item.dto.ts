@@ -10,4 +10,5 @@ export class RoutineListItemDto {
   remainingMinutes: number;
   remainingLabel: string;
   isDone: boolean;
+  streak: number;
 }
