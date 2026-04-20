@@ -20,7 +20,7 @@ import { RoutineInvitationsModule } from './routine-invitations/routine-invitati
 import { NotificationsModule } from './notifications/notifications.module';
 import { CollaborativeScoreModule } from './collaborative-score/collaborative-score.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
-
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -56,6 +56,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
     NotificationsModule,
     CollaborativeScoreModule,
     AuditLogsModule,
+    MailModule,
   ],
 
   controllers: [AppController],

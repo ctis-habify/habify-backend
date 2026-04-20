@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { JwtStrategy } from './jwt.strategy';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
       signOptions: { expiresIn: '30d' }, // token validity period
     }),
     AuditLogsModule,
+    MailModule,
   ],
 
   controllers: [AuthController], // handles /auth routes
