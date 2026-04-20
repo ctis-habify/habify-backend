@@ -220,6 +220,22 @@ export class UsersService {
     await this.usersRepo.update(userId, { dailyStreak: 0 });
   }
 
+  async setResetPasswordToken(userId: string, token: string, expiresInMs: number): Promise<void> {
+    const expires = new Date(Date.now() + expiresInMs);
+    await this.usersRepo.update(userId, {
+      resetPasswordToken: token,
+      resetPasswordExpires: expires,
+    });
+  }
+
+  async resetUserPassword(userId: string, newPasswordHash: string): Promise<void> {
+    await this.usersRepo.update(userId, {
+      passwordHash: newPasswordHash,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+    });
+  }
+
   // Updates user's last login timestamp
   async updateLastLogin(user: User): Promise<void> {
     user.lastLoginAt = new Date();
