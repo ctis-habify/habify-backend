@@ -1,4 +1,4 @@
-import { Repository, In, Not } from 'typeorm';
+import { Repository, In, Not, Between } from 'typeorm';
 import {
   BadRequestException,
   ForbiddenException,
@@ -467,5 +467,40 @@ export class CollaborativeRoutineLogsService {
       return 'bronze';
     }
     return null;
+  }
+  async getCalendarLogs(
+    userId: string,
+    routineId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<{ date: string; isDone: boolean }[]> {
+    if (!startDate || !endDate) {
+      return [];
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const logs = await this.logsRepository.find({
+      where: {
+        userId: userId,
+        routine: { id: routineId },
+        status: 'approved',
+        logDate: Between(start, end),
+      },
+      order: { logDate: 'ASC' },
+    });
+
+    return logs.map((log) => {
+      return {
+        date:
+          log.logDate instanceof Date
+            ? log.logDate.toISOString().split('T')[0]
+            : new Date(log.logDate).toISOString().split('T')[0],
+        isDone: true,
+      };
+    });
   }
 }

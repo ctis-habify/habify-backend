@@ -164,12 +164,17 @@ export class RoutineLogsService {
       return [];
     }
 
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
     const logs = await this.logsRepository.find({
       where: {
         userId: userId,
         routine: { id: String(routineId) },
         isVerified: true,
-        logDate: Between(new Date(startDate), new Date(endDate)),
+        logDate: Between(start, end),
       },
       order: { logDate: 'ASC' },
     });
