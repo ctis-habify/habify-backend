@@ -12,6 +12,7 @@ import { Between, LessThanOrEqual, type Repository } from 'typeorm';
 import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { Routine } from './routines.entity';
 import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
+import { isStreakBroken } from './routine-cycle.util';
 
 import { randomBytes } from 'crypto';
 import { Category } from 'src/categories/categories.entity';
@@ -29,7 +30,6 @@ import { RoutineMember } from './routine-members.entity';
 import { CollaborativeScoreService } from 'src/collaborative-score/collaborative-score.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AuditLogType } from '../audit-logs/audit-log.entity';
-
 
 @Injectable()
 export class RoutinesService {
@@ -59,7 +59,6 @@ export class RoutinesService {
     private readonly collaborativeScoreService: CollaborativeScoreService,
     private readonly auditLogsService: AuditLogsService,
   ) {}
-
 
   // List routines by user
   async getUserRoutines(userId: string): Promise<Routine[]> {
@@ -103,12 +102,10 @@ export class RoutinesService {
       name: saved.routineName,
     });
 
-
     // Worker için ilk job
 
     return saved;
   }
-
 
   // Create collaborative routine
   async createCollaborativeRoutine(
@@ -157,10 +154,8 @@ export class RoutinesService {
       },
     );
 
-
     return saved;
   }
-
 
   async joinRoutine(userId: string, key: string): Promise<{ message: string }> {
     const routine = await this.collaborativeRoutineRepo.findOne({
@@ -199,7 +194,9 @@ export class RoutinesService {
     if (xp) qb.andWhere('routine.xpRequirement <= :xp', { xp });
     if (memberId) {
       // Filter to routines where the target user is a member (via routine_members join table)
-      qb.innerJoin('routine.members', 'targetMember', 'targetMember.userId = :memberId', { memberId });
+      qb.innerJoin('routine.members', 'targetMember', 'targetMember.userId = :memberId', {
+        memberId,
+      });
     }
 
     const routines = await qb.getMany();
@@ -316,24 +313,33 @@ export class RoutinesService {
    */
   private async syncStreak(entity: Routine | RoutineMember): Promise<number> {
     const todayStr = new Date().toISOString().split('T')[0];
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
 
     const lastDone = entity.lastCompletedDate;
-    
-    // If never done or missed at least one full day (excluding today/yesterday)
-    if (!lastDone || (lastDone !== todayStr && lastDone !== yesterdayStr)) {
-      if (entity.streak > 0) {
-        entity.streak = 0;
-        if ('routineName' in entity) {
-          await this.routineRepo.update(entity.id, { streak: 0 });
-        } else {
-          await this.memberRepo.update((entity as any).id, { streak: 0 });
-        }
-      }
+
+    // Determine startDate and frequencyType from either a Routine or RoutineMember
+    const isRoutine = 'routineName' in entity;
+    const frequencyType = isRoutine
+      ? (entity as Routine).frequencyType
+      : ((entity as RoutineMember).routine?.frequencyType ?? 'daily');
+    const startDate = isRoutine
+      ? (entity as Routine).startDate
+      : ((entity as RoutineMember).routine?.startDate ?? todayStr);
+
+    if (!lastDone) {
       return 0;
     }
+
+    const broken = isStreakBroken(frequencyType, startDate, lastDone, todayStr);
+
+    if (broken && entity.streak > 0) {
+      entity.streak = 0;
+      if (isRoutine) {
+        await this.routineRepo.update(entity.id, { streak: 0 });
+      } else {
+        await this.memberRepo.update((entity as any).id, { streak: 0 });
+      }
+    }
+
     return entity.streak;
   }
 
@@ -442,6 +448,63 @@ export class RoutinesService {
     return { message: 'Member removed successfully' };
   }
 
+  /**
+   * Called when the creator of a defeated (lives = 0) collaborative routine
+   * needs to be removed.
+   *
+   * - If the creator is the sole member  → the entire routine is deleted.
+   * - If other members exist             → the creator is removed and a
+   *   random remaining member is promoted to 'creator'.
+   */
+  async handleCreatorDefeat(routineId: string): Promise<{ message: string }> {
+    const routine = await this.collaborativeRoutineRepo.findOne({
+      where: { id: routineId },
+      relations: ['members'],
+    });
+
+    if (!routine) {
+      throw new NotFoundException('Collaborative routine not found');
+    }
+
+    const remainingMembers = routine.members;
+
+    if (remainingMembers.length <= 1) {
+      // Creator is the only member — delete the whole routine
+      await this.collaborativeRoutineRepo.delete(routineId);
+      this.logger.log(`Routine ${routineId} deleted: creator was the sole member after defeat.`);
+      return { message: 'Routine deleted: you were the last member' };
+    }
+
+    // Multiple members — remove creator and promote a random other member
+    const creatorMembership = remainingMembers.find((m) => m.role === 'creator');
+    if (!creatorMembership) {
+      throw new NotFoundException('Creator membership not found');
+    }
+
+    const otherMembers = remainingMembers.filter((m) => m.role !== 'creator');
+    const newCreatorMembership = otherMembers[Math.floor(Math.random() * otherMembers.length)];
+
+    // Promote new creator
+    newCreatorMembership.role = 'creator';
+    await this.memberRepo.save(newCreatorMembership);
+
+    // Update creatorId on the routine entity
+    routine.creatorId = newCreatorMembership.userId;
+    await this.collaborativeRoutineRepo.save(routine);
+
+    // Remove the old creator's membership
+    await this.memberRepo.remove(creatorMembership);
+
+    this.logger.log(
+      `Routine ${routineId}: creator removed after defeat, ` +
+        `new creator is user ${newCreatorMembership.userId}.`,
+    );
+
+    return {
+      message: `You were removed from the routine. A new admin has been assigned.`,
+    };
+  }
+
   // update routine (Personal or Collaborative)
   async updateRoutine(
     userId: string,
@@ -529,7 +592,6 @@ export class RoutinesService {
 
       return { message: 'ROUTINE IS DELETED SUCCESSFULLY' };
     }
-
 
     // 3. If not found in either or not authorized, throw NotFoundException
     throw new NotFoundException('Routine not found or you do not have permission to delete it');
@@ -784,9 +846,15 @@ export class RoutinesService {
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    if (user.lastStreakDate && user.lastStreakDate !== todayStr && user.lastStreakDate !== yesterdayStr) {
+    if (
+      user.lastStreakDate &&
+      user.lastStreakDate !== todayStr &&
+      user.lastStreakDate !== yesterdayStr
+    ) {
       if (user.dailyStreak > 0) {
-        this.logger.log(`Lazy resetting daily streak for user ${userId} (last date was ${user.lastStreakDate})`);
+        this.logger.log(
+          `Lazy resetting daily streak for user ${userId} (last date was ${user.lastStreakDate})`,
+        );
         await this.userRepo.update(userId, { dailyStreak: 0 });
         streak = 0;
       }

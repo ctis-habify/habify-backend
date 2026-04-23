@@ -9,6 +9,7 @@ import { GcsService } from 'src/storage/gcs.service';
 import { AiService } from 'src/ai/ai.service';
 import { UsersService } from 'src/users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { shouldIncrementStreak } from '../routines/routine-cycle.util';
 
 const STREAK_BONUS_STEP = 5;
 const STREAK_BONUS_POINTS_PER_STEP = 10;
@@ -83,7 +84,14 @@ export class RoutineLogsService {
       let streakBonusPoints = 0;
 
       if (routine.lastCompletedDate !== today) {
-        if (routine.lastCompletedDate === yesterdayStr) {
+        const increment = shouldIncrementStreak(
+          routine.frequencyType,
+          routine.startDate,
+          routine.lastCompletedDate,
+          today,
+        );
+
+        if (increment) {
           routine.streak += 1;
         } else {
           routine.streak = 1;

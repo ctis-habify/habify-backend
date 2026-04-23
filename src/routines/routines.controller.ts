@@ -118,7 +118,16 @@ export class RoutinesController {
     @Query('memberId') memberId?: string,
   ): Promise<PublicCollaborativeRoutineResponseDto[]> {
     const userId = this.getUserId(req);
-    return this.routinesService.browsePublicRoutines(userId, search, categoryId, frequencyType, gender, age, xp, memberId);
+    return this.routinesService.browsePublicRoutines(
+      userId,
+      search,
+      categoryId,
+      frequencyType,
+      gender,
+      age,
+      xp,
+      memberId,
+    );
   }
 
   @UseGuards(AuthGuard)
@@ -139,6 +148,22 @@ export class RoutinesController {
   ): Promise<{ message: string }> {
     const userId = this.getUserId(req);
     return this.routinesService.removeMember(userId, routineId, userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('collaborative/:id/creator-defeat')
+  @ApiOperation({
+    summary:
+      'Called when a collaborative routine is defeated (lives = 0) and the caller is the creator. ' +
+      'Deletes the routine if the creator is the sole member, or kicks the creator and ' +
+      'promotes a random remaining member to creator.',
+  })
+  async handleCreatorDefeat(
+    @Req() req: Request,
+    @Param('id') routineId: string,
+  ): Promise<{ message: string }> {
+    this.getUserId(req); // ensures the caller is authenticated
+    return this.routinesService.handleCreatorDefeat(routineId);
   }
 
   @UseGuards(AuthGuard)
@@ -279,12 +304,12 @@ export class RoutinesController {
     @Req() req: Request,
   ): Promise<{ date: string; isDone: boolean }[]> {
     const userId = this.getUserId(req);
-    
+
     const collabRoutine = await this.routinesService.getCollaborativeRoutineById(id);
     if (collabRoutine) {
       return this.collaborativeLogs.getCalendarLogs(userId, id, startDate, endDate);
     }
-    
+
     return this.routineLogs.getCalendarLogs(userId, id, startDate, endDate);
   }
 
