@@ -12,7 +12,7 @@ import { Between, LessThanOrEqual, type Repository } from 'typeorm';
 import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { Routine } from './routines.entity';
 import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
-import { isStreakBroken } from './routine-cycle.util';
+import { isStreakBroken, isCompletedInCurrentCycle } from './routine-cycle.util';
 
 import { randomBytes } from 'crypto';
 import { Category } from 'src/categories/categories.entity';
@@ -311,19 +311,42 @@ export class RoutinesService {
    * Helper to perform "lazy reset" of streaks if the last completion was more than 1 day ago.
    * This ensures streaks look correct even if background cron jobs did not run.
    */
-  private async syncStreak(entity: Routine | RoutineMember): Promise<number> {
-    const todayStr = new Date().toISOString().split('T')[0];
-
+  private async syncStreak(
+    entity: Routine | RoutineMember,
+    todayStrOverride?: string,
+  ): Promise<number> {
+    const todayStr = todayStrOverride || new Date().toISOString().split('T')[0];
     const lastDone = entity.lastCompletedDate;
 
     // Determine startDate and frequencyType from either a Routine or RoutineMember
-    const isRoutine = 'routineName' in entity;
+    const isRoutine = (entity as any).routineName !== undefined;
+
+    this.logger.debug(
+      `syncStreak called for ${isRoutine ? 'Routine' : 'Member'} ${entity.id}. lastDone: ${lastDone}, today: ${todayStr}`,
+    );
+
     const frequencyType = isRoutine
       ? (entity as Routine).frequencyType
       : ((entity as RoutineMember).routine?.frequencyType ?? 'daily');
     const startDate = isRoutine
       ? (entity as Routine).startDate
       : ((entity as RoutineMember).routine?.startDate ?? todayStr);
+
+    // 1. Lazy Reset isAiVerified (Personal Routines only)
+    if (isRoutine) {
+      const routine = entity as Routine;
+      const completedNow = isCompletedInCurrentCycle(frequencyType, startDate, lastDone, todayStr);
+
+      this.logger.debug(
+        `Routine ${routine.id} (freq: ${frequencyType}): isAiVerified=${routine.isAiVerified}, completedNow=${completedNow}`,
+      );
+
+      if (routine.isAiVerified && !completedNow) {
+        this.logger.log(`Lazy Reset SUCCESS: Routine ${routine.id} isAiVerified set to false`);
+        routine.isAiVerified = false;
+        await this.routineRepo.save(routine);
+      }
+    }
 
     if (!lastDone) {
       return 0;
@@ -597,7 +620,11 @@ export class RoutinesService {
     throw new NotFoundException('Routine not found or you do not have permission to delete it');
   }
 
-  async getAllRoutinesByList(userId: string): Promise<RoutineListWithRoutinesDto[]> {
+  async getAllRoutinesByList(
+    userId: string,
+    todayStr?: string,
+  ): Promise<RoutineListWithRoutinesDto[]> {
+    const today = todayStr || new Date().toISOString().split('T')[0];
     const lists = await this.routineListRepo.find({
       where: { userId: userId },
       relations: ['category', 'routines'],
@@ -612,8 +639,12 @@ export class RoutinesService {
       );
 
       const routineDtos: RoutineListItemDto[] = [];
+      this.logger.log(`Processing list ${list.id} for user ${userId}. Routines count: ${list.routines?.length || 0}`);
 
       for (const routine of routinesSorted) {
+        // Apply lazy streak sync & completion reset
+        const syncedStreak = await this.syncStreak(routine, today);
+
         // Recalculate remaining minutes based on frequency logic
         const now = new Date();
         let endAt = new Date();
@@ -680,9 +711,6 @@ export class RoutinesService {
           remainingLabel = 'Failed';
         }
 
-        // Apply lazy streak sync
-        const syncedStreak = await this.syncStreak(routine);
-
         routineDtos.push({
           id: routine.id,
           routineName: routine.routineName,
@@ -720,9 +748,9 @@ export class RoutinesService {
     return `${remainingMinutes} Minutes`;
   }
 
-  async getTodayRoutines(userId: string): Promise<TodayScreenResponseDto> {
-    const today = new Date();
-    const todayString = today.toISOString().split('T')[0];
+  async getTodayRoutines(userId: string, todayStr?: string): Promise<TodayScreenResponseDto> {
+    const todayString = todayStr || new Date().toISOString().split('T')[0];
+    const today = new Date(todayString + 'T00:00:00Z');
 
     // 1. Fetch Personal Routines
     const personalRoutines = await this.routineRepo.find({
@@ -744,20 +772,6 @@ export class RoutinesService {
       .map((m) => m.routine);
 
     // 3. Merged logic for individual streak and completion
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-
-    // For personal logs
-    const personalLogs = await this.logRepo.find({
-      where: {
-        userId: userId,
-        logDate: Between(startOfDay, endOfDay),
-        isVerified: true,
-      },
-      relations: ['routine'],
-    });
-    const completedPersonalIds = new Set(personalLogs.map((log) => log.routine.id));
-
     // Process Personal Routines
     const personalResults: any[] = [];
     for (const routine of personalRoutines) {
@@ -781,7 +795,7 @@ export class RoutinesService {
           ? 'Pending'
           : this.formatRemainingLabel(remainingMinutes);
 
-      const syncedStreak = await this.syncStreak(routine);
+      const syncedStreak = await this.syncStreak(routine, todayString);
 
       personalResults.push({
         id: routine.id,
@@ -790,7 +804,7 @@ export class RoutinesService {
         startTime: routine.startTime,
         endTime: routine.endTime,
         frequency: routine.frequencyType,
-        isCompleted: completedPersonalIds.has(routine.id),
+        isCompleted: routine.isAiVerified,
         remainingLabel: remainingLabel,
         streak: syncedStreak,
       });
@@ -817,7 +831,7 @@ export class RoutinesService {
       const diffMs = endAt.getTime() - now.getTime();
       const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
 
-      const syncedStreak = await this.syncStreak(membership);
+      const syncedStreak = await this.syncStreak(membership, todayString);
 
       collabResults.push({
         id: routine.id,
@@ -826,7 +840,12 @@ export class RoutinesService {
         startTime: routine.startTime,
         endTime: routine.endTime,
         frequency: routine.frequencyType,
-        isCompleted: false, // ... would need collab logs here
+        isCompleted: isCompletedInCurrentCycle(
+          routine.frequencyType,
+          routine.startDate,
+          membership.lastCompletedDate,
+          todayString,
+        ),
         remainingLabel: this.formatRemainingLabel(remainingMinutes),
         streak: syncedStreak,
       });
@@ -841,8 +860,7 @@ export class RoutinesService {
     let streak = user.dailyStreak ?? 0;
 
     // Apply Lazy User Streak Reset
-    const todayStr = new Date().toISOString().split('T')[0];
-    const yesterday = new Date();
+    const yesterday = new Date(todayString + 'T00:00:00Z');
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 

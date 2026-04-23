@@ -155,3 +155,23 @@ export function isStreakBroken(
 
   return false;
 }
+
+/**
+ * Returns true if the routine was completed within the current active cycle.
+ * For daily: completed today.
+ * For weekly: completed within the current 7-day week (starting from startDate).
+ */
+export function isCompletedInCurrentCycle(
+  frequencyType: string,
+  startDate: string,
+  lastCompletedDate: string | null,
+  currentDate: string,
+): boolean {
+  if (!lastCompletedDate) return false;
+
+  const freq = frequencyType.toLowerCase();
+  const currentCycle = getCycleIndex(freq, startDate, currentDate);
+  const lastCycle = getCycleIndex(freq, startDate, lastCompletedDate);
+
+  return currentCycle === lastCycle;
+}
