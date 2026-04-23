@@ -7,7 +7,6 @@ import { RoutinePenaltyService } from '../routines/routine-penalty.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
-
 @Injectable()
 export class SchedulerService implements OnModuleInit {
   private readonly logger = new Logger(SchedulerService.name);
@@ -19,7 +18,6 @@ export class SchedulerService implements OnModuleInit {
     private readonly auditLogsService: AuditLogsService,
     private readonly notificationsService: NotificationsService,
   ) {}
-
 
   async onModuleInit(): Promise<void> {}
 
@@ -47,6 +45,14 @@ export class SchedulerService implements OnModuleInit {
     }
   }
 
+  async catchUpMissedPenalties(): Promise<{
+    processedRoutines: number;
+    livesDeducted: number;
+    personalXpDeductions: number;
+  }> {
+    return this.routinePenaltyService.catchUpMissedPenalties();
+  }
+
   // Her gece 02:00'de audit log temizliği yapar
   @Cron('0 0 2 * * *')
   async handleAuditLogCleanup(): Promise<void> {
@@ -66,7 +72,6 @@ export class SchedulerService implements OnModuleInit {
       this.logger.error('Error running notification cleanup', error);
     }
   }
-
 
   // Her 5 dakikada bir çalışır
   @Cron('0 */5 * * * *')

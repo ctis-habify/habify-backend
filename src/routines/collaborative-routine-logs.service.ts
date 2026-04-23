@@ -18,6 +18,7 @@ import { NotificationsService } from 'src/notifications/notifications.service';
 import { CollaborativeScoreService } from '../collaborative-score/collaborative-score.service';
 import { RoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
 import { CollaborativeChatService } from './collaborative-chat.service';
+import { shouldIncrementStreak } from './routine-cycle.util';
 
 const STREAK_BONUS_STEP = 5;
 const STREAK_BONUS_POINTS_PER_STEP = 10;
@@ -218,11 +219,14 @@ export class CollaborativeRoutineLogsService {
         const today = new Date().toISOString().split('T')[0];
 
         if (submitterMembership.lastCompletedDate !== today) {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          const increment = shouldIncrementStreak(
+            log.routine.frequencyType,
+            log.routine.startDate,
+            submitterMembership.lastCompletedDate,
+            today,
+          );
 
-          if (submitterMembership.lastCompletedDate === yesterdayStr) {
+          if (increment) {
             submitterMembership.streak += 1;
           } else {
             submitterMembership.streak = 1;

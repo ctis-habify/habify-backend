@@ -16,6 +16,25 @@ export class SchedulerController {
     return { message: 'Daily rollup job triggered successfully' };
   }
 
+  @Post('catch-up-penalties')
+  @ApiOperation({
+    summary:
+      'Retroactively apply missed penalties for all past cycles (weekly and daily). ' +
+      'Call once after deploying the penalty fix to catch up on historical misses.',
+  })
+  async catchUpPenalties(): Promise<{
+    message: string;
+    processedRoutines: number;
+    livesDeducted: number;
+    personalXpDeductions: number;
+  }> {
+    const result = await this.schedulerService.catchUpMissedPenalties();
+    return {
+      message: 'Catch-up penalty job completed',
+      ...result,
+    };
+  }
+
   @Post('reminder-scan')
   @ApiOperation({ summary: 'Trigger Reminder Scan Job Manually' })
   async triggerReminderScan(): Promise<{ message: string }> {
