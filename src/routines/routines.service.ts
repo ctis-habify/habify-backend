@@ -448,6 +448,63 @@ export class RoutinesService {
     return { message: 'Member removed successfully' };
   }
 
+  /**
+   * Called when the creator of a defeated (lives = 0) collaborative routine
+   * needs to be removed.
+   *
+   * - If the creator is the sole member  → the entire routine is deleted.
+   * - If other members exist             → the creator is removed and a
+   *   random remaining member is promoted to 'creator'.
+   */
+  async handleCreatorDefeat(routineId: string): Promise<{ message: string }> {
+    const routine = await this.collaborativeRoutineRepo.findOne({
+      where: { id: routineId },
+      relations: ['members'],
+    });
+
+    if (!routine) {
+      throw new NotFoundException('Collaborative routine not found');
+    }
+
+    const remainingMembers = routine.members;
+
+    if (remainingMembers.length <= 1) {
+      // Creator is the only member — delete the whole routine
+      await this.collaborativeRoutineRepo.delete(routineId);
+      this.logger.log(`Routine ${routineId} deleted: creator was the sole member after defeat.`);
+      return { message: 'Routine deleted: you were the last member' };
+    }
+
+    // Multiple members — remove creator and promote a random other member
+    const creatorMembership = remainingMembers.find((m) => m.role === 'creator');
+    if (!creatorMembership) {
+      throw new NotFoundException('Creator membership not found');
+    }
+
+    const otherMembers = remainingMembers.filter((m) => m.role !== 'creator');
+    const newCreatorMembership = otherMembers[Math.floor(Math.random() * otherMembers.length)];
+
+    // Promote new creator
+    newCreatorMembership.role = 'creator';
+    await this.memberRepo.save(newCreatorMembership);
+
+    // Update creatorId on the routine entity
+    routine.creatorId = newCreatorMembership.userId;
+    await this.collaborativeRoutineRepo.save(routine);
+
+    // Remove the old creator's membership
+    await this.memberRepo.remove(creatorMembership);
+
+    this.logger.log(
+      `Routine ${routineId}: creator removed after defeat, ` +
+        `new creator is user ${newCreatorMembership.userId}.`,
+    );
+
+    return {
+      message: `You were removed from the routine. A new admin has been assigned.`,
+    };
+  }
+
   // update routine (Personal or Collaborative)
   async updateRoutine(
     userId: string,
