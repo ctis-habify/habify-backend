@@ -63,6 +63,20 @@ export class RoutinesController {
     return user.id;
   }
 
+  private getTodayStr(req: Request): string {
+    const timezone = (req.headers['x-timezone'] as string) || 'UTC';
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+    } catch (e) {
+      return new Date().toISOString().split('T')[0];
+    }
+  }
+
   @UseGuards(AuthGuard)
   @Get('me')
   async getMyRoutines(@Req() req: Request): Promise<Routine[]> {
@@ -195,7 +209,8 @@ export class RoutinesController {
   @Get('grouped')
   async getMyRoutinesListed(@Req() req: Request): Promise<RoutineListWithRoutinesDto[]> {
     const userId = this.getUserId(req);
-    return this.routinesService.getAllRoutinesByList(userId);
+    const todayStr = this.getTodayStr(req);
+    return this.routinesService.getAllRoutinesByList(userId, todayStr);
   }
 
   @UseGuards(AuthGuard)
@@ -262,7 +277,8 @@ export class RoutinesController {
   @Get('today')
   async getTodayRoutines(@Req() req: Request): Promise<TodayScreenResponseDto> {
     const userId = this.getUserId(req);
-    return this.routinesService.getTodayRoutines(userId);
+    const todayStr = this.getTodayStr(req);
+    return this.routinesService.getTodayRoutines(userId, todayStr);
   }
 
   @UseGuards(AuthGuard)
