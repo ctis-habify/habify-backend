@@ -72,7 +72,7 @@ export class RoutinesController {
         month: '2-digit',
         day: '2-digit',
       }).format(new Date());
-    } catch (e) {
+    } catch {
       return new Date().toISOString().split('T')[0];
     }
   }
@@ -216,59 +216,44 @@ export class RoutinesController {
   @UseGuards(AuthGuard)
   @Post('verify')
   async verify(
-    @Body() body: { routineId?: string; objectPath?: string },
+    @Body() body: { routineId: string; objectPath: string },
     @Req() req: Request,
   ): Promise<VerifyResult> {
     try {
       const userId = this.getUserId(req);
-      const bodyRecord = body as Record<string, unknown>;
-      const legacyRoutineId =
-        typeof bodyRecord.routine_id === 'string' ? bodyRecord.routine_id : undefined;
-      const routineId = (body.routineId || legacyRoutineId || '').trim();
-      const objectPath = (body.objectPath || '').trim();
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const { routineId, objectPath } = body;
 
-      if (!routineId || !uuidRegex.test(routineId)) {
-        throw new BadRequestException('Valid routineId is required');
-      }
-      if (!objectPath) {
-        throw new BadRequestException('objectPath is required');
+      if (!routineId || !objectPath) {
+        throw new BadRequestException('routineId and objectPath are required');
       }
 
-      // 1. Try personal routine first
+      // Try personal routine first
       let routine: Routine | CollaborativeRoutine | null =
         await this.routinesService.getRoutineById(userId, routineId);
       let isCollab = false;
 
       if (!routine) {
-        // 2. Try collaborative routine
         routine = await this.routinesService.getCollaborativeRoutineById(routineId);
         isCollab = true;
       }
 
-      if (!routine) throw new NotFoundException('Routine group or personal routine not found');
+      if (!routine) throw new NotFoundException('Routine not found');
 
       if (isCollab) {
         await this.collaborativeLogs.create(routineId, objectPath, userId);
         return { score: 1, verified: false, pending: true };
       }
 
-      const routineText = routine.routineName;
       const signedReadUrl = await this.gcs.getSignedReadUrl(objectPath, 600);
-      const aiResult = await this.ai.verify({ imageUrl: signedReadUrl, text: routineText });
+      const aiResult = await this.ai.verify({ imageUrl: signedReadUrl, text: routine.routineName });
 
       if (aiResult.verified) {
-        await this.routineLogs.create(routineId, objectPath, userId, {
-          preverified: true,
-        });
+        await this.routineLogs.create(routineId, objectPath, userId, { preverified: true });
       }
 
       return aiResult;
     } catch (error) {
-      this.logger.error(
-        `verify failed: ${(error as Error)?.message || 'unknown error'} | body=${JSON.stringify(body)}`,
-      );
+      this.logger.error(`verify failed: ${(error as Error)?.message || 'unknown error'}`);
       throw error;
     }
   }
@@ -284,14 +269,14 @@ export class RoutinesController {
   @UseGuards(AuthGuard)
   @Get('collaborative/view')
   async viewCollaborativeRoutines(@Req() req: Request): Promise<CollaborativeRoutineViewDto[]> {
-    const userId = (req.user as import('../auth/interfaces/jwt-payload.interface').JwtPayload).id;
+    const userId = this.getUserId(req);
     return this.routinesService.viewCollaborativeRoutines(userId);
   }
 
   @UseGuards(AuthGuard)
   @Get('collaborative/pending-logs')
   async getPendingVerifications(@Req() req: Request) {
-    const userId = (req.user as import('../auth/interfaces/jwt-payload.interface').JwtPayload).id;
+    const userId = this.getUserId(req);
     return this.collaborativeLogs.getPendingVerifications(userId);
   }
 
@@ -320,12 +305,10 @@ export class RoutinesController {
     @Req() req: Request,
   ): Promise<{ date: string; isDone: boolean }[]> {
     const userId = this.getUserId(req);
-
     const collabRoutine = await this.routinesService.getCollaborativeRoutineById(id);
     if (collabRoutine) {
       return this.collaborativeLogs.getCalendarLogs(userId, id, startDate, endDate);
     }
-
     return this.routineLogs.getCalendarLogs(userId, id, startDate, endDate);
   }
 
@@ -333,12 +316,10 @@ export class RoutinesController {
   @Get(':id/logs')
   async getAnyRoutineLogs(@Param('id') id: string, @Req() req: Request) {
     const userId = this.getUserId(req);
-    // Check if it's a collaborative routine
     const collabRoutine = await this.routinesService.getCollaborativeRoutineById(id);
     if (collabRoutine) {
       return this.collaborativeLogs.getLogsByRoutine(id);
     }
-    // Otherwise try personal
     return this.routineLogs.listLogs(id, userId);
   }
 
@@ -349,11 +330,10 @@ export class RoutinesController {
     @Param('logId') logId: number,
     @Body() body: { status: 'approved' | 'rejected' },
   ) {
-    const userId = (req.user as import('../auth/interfaces/jwt-payload.interface').JwtPayload).id;
+    const userId = this.getUserId(req);
     return this.collaborativeLogs.verifyLog(userId, logId, body.status);
   }
 
-  // Get routine by id
   @UseGuards(AuthGuard)
   @Get(':id')
   async getRoutineById(
@@ -362,12 +342,9 @@ export class RoutinesController {
   ): Promise<Routine | CollaborativeRoutine | null> {
     const userId = this.getUserId(req);
     const routine = await this.routinesService.getRoutineById(userId, id);
-    if (routine) return routine;
-
-    return this.routinesService.getCollaborativeRoutineById(id);
+    return routine || this.routinesService.getCollaborativeRoutineById(id);
   }
 
-  // update routine
   @UseGuards(AuthGuard)
   @Patch(':id')
   async updateRoutine(
@@ -379,7 +356,6 @@ export class RoutinesController {
     return this.routinesService.updateRoutine(userId, id, dto);
   }
 
-  // delete routine
   @UseGuards(AuthGuard)
   @Delete(':id')
   async deleteRoutine(@Req() req: Request, @Param('id') id: string): Promise<{ message: string }> {

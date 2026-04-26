@@ -13,13 +13,12 @@ import * as crypto from 'crypto';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly usersService: UsersService, // user operations
-    private readonly jwtService: JwtService, // JWT utilities
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
     private readonly auditLogsService: AuditLogsService,
     private readonly mailService: MailService,
   ) {}
 
-  // Handles user registration
   async register(dto: RegisterDto): Promise<{ user: Partial<User>; accessToken: string }> {
     const user = await this.usersService.createUser(dto);
     const token = await this.generateToken(user);
@@ -31,7 +30,6 @@ export class AuthService {
     return { user: this.sanitizeUser(user), accessToken: token };
   }
 
-  // Validates email + password pair
   async validateUser(email: string, password: string): Promise<User> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
@@ -50,40 +48,38 @@ export class AuthService {
     return user;
   }
 
-  // Login flow: validate -> update login time -> return user + token
   async login(
     email: string,
     password: string,
+    rememberMe?: boolean,
   ): Promise<{ user: Partial<User>; accessToken: string }> {
     const user = await this.validateUser(email, password);
 
-    await this.usersService.updateLastLogin(user); // update last_login_at
+    await this.usersService.updateLastLogin(user);
 
-    const token = await this.generateToken(user);
+    const token = await this.generateToken(user, rememberMe);
 
     await this.auditLogsService.log('LOGIN', AuditLogType.security, user.id);
 
     return { user: this.sanitizeUser(user), accessToken: token };
   }
 
-  // Creates a signed JWT token for the given user
-  private async generateToken(user: User): Promise<string> {
+  private async generateToken(user: User, rememberMe?: boolean): Promise<string> {
     const payload = {
       id: user.id,
-      sub: user.id, // JWT "subject"
+      sub: user.id,
       email: user.email,
       name: user.name,
     };
 
-    return this.jwtService.signAsync(payload);
+    return this.jwtService.signAsync(payload, {
+      expiresIn: rememberMe ? '30d' : '7d',
+    });
   }
 
   async forgotPassword(email: string): Promise<void> {
     const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      // Return early without throwing error to prevent email enumeration
-      return;
-    }
+    if (!user) return;
 
     const token = crypto.randomBytes(32).toString('hex');
     const expiresInMs = 1000 * 60 * 60; // 1 hour
@@ -109,7 +105,6 @@ export class AuthService {
     await this.auditLogsService.log('PASSWORD_RESET_COMPLETED', AuditLogType.security, user.id);
   }
 
-  // Removes sensitive fields before sending user to client
   private sanitizeUser(user: User): Partial<User> {
     const { passwordHash: _passwordHash, ...rest } = user;
     return rest;

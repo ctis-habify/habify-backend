@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
+import compression from 'compression';
 import * as dotenv from 'dotenv';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
@@ -9,7 +11,11 @@ dotenv.config();
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  app.enableCors(); // Expo ve diğer cihazların erişebilmesi için gerekli
+
+  app.use(helmet());
+  app.use(compression());
+
+  app.enableCors();
   app.useGlobalFilters(new AllExceptionsFilter());
 
   // DTO validation

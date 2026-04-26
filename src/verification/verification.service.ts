@@ -110,10 +110,13 @@ export class VerificationService {
       }
     } catch (err) {
       const reason = err instanceof Error ? err.message : 'Unknown verification error';
+      const isLastAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
       verification.failReason = reason;
-      verification.status = job.attemptsMade + 1 >= (job.opts.attempts ?? 1) ? 'failed' : 'pending';
+      verification.status = isLastAttempt ? 'failed' : 'processing';
       await this.verificationRepository.save(verification);
-      this.logger.error(`Verification ${verification.id} failed: ${reason}`);
+      this.logger.error(
+        `Verification ${verification.id} failed (attempt ${job.attemptsMade + 1}/${job.opts.attempts ?? 1}): ${reason}`,
+      );
       throw err;
     }
   }

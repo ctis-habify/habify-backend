@@ -1,5 +1,4 @@
-
-import { getCycleIndex, isCompletedInCurrentCycle } from './routine-cycle.util';
+import { isCompletedInCurrentCycle } from './routine-cycle.util';
 
 describe('RoutineCycleUtil - isCompletedInCurrentCycle', () => {
   const startDate = '2026-04-20'; // A Monday

@@ -208,7 +208,7 @@ export class RoutinePenaltyService {
     });
 
     if (members.length <= 1) {
-      await this.collaborativeRoutineRepo.delete(routine.id);
+      await this.collabRoutineRepo.delete(routine.id);
       this.logger.log(`Routine ${routine.id} deleted: creator was the sole member after defeat.`);
       return;
     }

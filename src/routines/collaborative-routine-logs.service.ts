@@ -47,7 +47,6 @@ export class CollaborativeRoutineLogsService {
     routineId: string,
     verificationImageUrl: string,
     userId: string,
-    _options?: { preverified?: boolean },
   ): Promise<CollaborativeRoutineLog> {
     const routine = await this.routinesRepository.findOne({ where: { id: routineId } });
     if (!routine) {
@@ -94,58 +93,44 @@ export class CollaborativeRoutineLogsService {
       where: { userId },
       relations: ['routine'],
     });
-
     const routineIds = memberships.map((m) => m.routine.id);
-
     if (routineIds.length === 0) return [];
 
-    const pendingLogs = await this.logsRepository.find({
-      where: {
-        routine: { id: In(routineIds) },
-        status: 'pending',
-        userId: Not(userId),
-      },
+    const logs = await this.logsRepository.find({
+      where: { routine: { id: In(routineIds) }, status: 'pending', userId: Not(userId) },
       relations: ['routine', 'routine.category'],
       order: { createdAt: 'DESC' },
     });
 
-    const results = [];
-    for (const log of pendingLogs) {
-      const user = await this.usersService.findById(log.userId);
-      let signedUrl = log.verificationImageUrl;
-      if (signedUrl && !signedUrl.startsWith('http')) {
-        try {
-          signedUrl = await this.gcsService.getSignedReadUrl(log.verificationImageUrl, 3600);
-        } catch {
-          /* ignore */
-        }
-      }
+    return Promise.all(
+      logs.map(async (log) => {
+        const user = await this.usersService.findById(log.userId);
+        const signedUrl =
+          log.verificationImageUrl && !log.verificationImageUrl.startsWith('http')
+            ? await this.gcsService
+                .getSignedReadUrl(log.verificationImageUrl, 3600)
+                .catch(() => log.verificationImageUrl)
+            : log.verificationImageUrl;
 
-      results.push({
-        id: log.id,
-        routineId: log.routine.id,
-        routineName: log.routine.routineName,
-        categoryName: log.routine.category?.name || 'Group',
-        verificationImageUrl: signedUrl,
-        submittedBy: user?.name,
-        submittedByAvatar: user?.avatarUrl,
-        createdAt: log.createdAt,
-        approvals: await Promise.all(
-          (log.approvals || []).map(async (uid) => {
-            const u = await this.usersService.findById(uid);
-            return { id: uid, name: u?.name || 'Member', avatarUrl: u?.avatarUrl };
-          }),
-        ),
-        rejections: await Promise.all(
-          (log.rejections || []).map(async (uid) => {
-            const u = await this.usersService.findById(uid);
-            return { id: uid, name: u?.name || 'Member', avatarUrl: u?.avatarUrl };
-          }),
-        ),
-      });
-    }
+        const mapMember = async (uid: string) => {
+          const u = await this.usersService.findById(uid);
+          return { id: uid, name: u?.name || 'Member', avatarUrl: u?.avatarUrl };
+        };
 
-    return results;
+        return {
+          id: log.id,
+          routineId: log.routine.id,
+          routineName: log.routine.routineName,
+          categoryName: log.routine.category?.name || 'Group',
+          verificationImageUrl: signedUrl,
+          submittedBy: user?.name,
+          submittedByAvatar: user?.avatarUrl,
+          createdAt: log.createdAt,
+          approvals: await Promise.all((log.approvals || []).map(mapMember)),
+          rejections: await Promise.all((log.rejections || []).map(mapMember)),
+        };
+      }),
+    );
   }
 
   async verifyLog(userId: string, logId: number, status: 'approved' | 'rejected') {
@@ -328,76 +313,69 @@ export class CollaborativeRoutineLogsService {
   }
 
   private getStreakBonusPoints(streak: number): number {
-    if (streak < STREAK_BONUS_STEP) {
-      return 0;
-    }
-
-    return Math.floor(streak / STREAK_BONUS_STEP) * STREAK_BONUS_POINTS_PER_STEP;
+    return streak < STREAK_BONUS_STEP
+      ? 0
+      : Math.floor(streak / STREAK_BONUS_STEP) * STREAK_BONUS_POINTS_PER_STEP;
   }
 
   async getLogsByRoutine(routineId: string): Promise<Record<string, unknown>[]> {
     const logs = await this.logsRepository.find({
-      where: {
-        routine: { id: routineId },
-      },
+      where: { routine: { id: routineId } },
       relations: ['routine', 'routine.category', 'routine.members'],
       order: { createdAt: 'DESC' },
     });
 
-    const results = [];
-    for (const log of logs) {
-      const approvalCount = (log.approvals || []).length;
-      const currentRequiredApprovals = Math.max(1, (log.routine?.members?.length || 1) - 1);
-      const requiredApprovals =
-        log.status === 'pending'
-          ? Math.max(1, log.requiredApprovals || 1, currentRequiredApprovals)
-          : Math.max(1, log.requiredApprovals || 1, approvalCount);
-      const user = await this.usersService.findById(log.userId);
-      const submitterMembership = await this.memberRepository.findOne({
-        where: { userId: log.userId, collaborativeRoutineId: log.routine.id },
-      });
-      let signedUrl = log.verificationImageUrl;
-      if (signedUrl && !signedUrl.startsWith('http')) {
-        try {
-          signedUrl = await this.gcsService.getSignedReadUrl(log.verificationImageUrl, 3600);
-        } catch {
-          /* ignore */
-        }
-      }
-      results.push({
-        id: log.id,
-        logDate: log.logDate,
-        createdAt: log.createdAt,
-        isVerified: log.isVerified,
-        status: log.status,
-        verificationImageUrl: signedUrl,
-        routineId: log.routine.id,
-        routineName: log.routine.routineName,
-        categoryName: log.routine.category?.name || 'Group',
-        userId: user?.id,
-        userName: user?.name,
-        userAvatar: user?.avatarUrl,
-        completionXp: log.routine.completionXp || 10,
-        submitterStreak: submitterMembership?.streak || 0,
-        requiredApprovals,
-        approvalCount,
-        isCompletedByGroup: log.status === 'approved' && approvalCount >= requiredApprovals,
-        approvals: await Promise.all(
-          (log.approvals || []).map(async (uid) => {
-            const u = await this.usersService.findById(uid);
-            return { id: uid, name: u?.name || 'Member', avatarUrl: u?.avatarUrl };
-          }),
-        ),
-        rejections: await Promise.all(
-          (log.rejections || []).map(async (uid) => {
-            const u = await this.usersService.findById(uid);
-            return { id: uid, name: u?.name || 'Member', avatarUrl: u?.avatarUrl };
-          }),
-        ),
-      });
-    }
+    return Promise.all(
+      logs.map(async (log) => {
+        const approvalCount = (log.approvals || []).length;
+        const currentReq = Math.max(1, (log.routine?.members?.length || 1) - 1);
+        const requiredApprovals =
+          log.status === 'pending'
+            ? Math.max(1, log.requiredApprovals || 1, currentReq)
+            : Math.max(1, log.requiredApprovals || 1, approvalCount);
 
-    return results;
+        const [user, member] = await Promise.all([
+          this.usersService.findById(log.userId),
+          this.memberRepository.findOne({
+            where: { userId: log.userId, collaborativeRoutineId: log.routine.id },
+          }),
+        ]);
+
+        const signedUrl =
+          log.verificationImageUrl && !log.verificationImageUrl.startsWith('http')
+            ? await this.gcsService
+                .getSignedReadUrl(log.verificationImageUrl, 3600)
+                .catch(() => log.verificationImageUrl)
+            : log.verificationImageUrl;
+
+        const mapMember = async (uid: string) => {
+          const u = await this.usersService.findById(uid);
+          return { id: uid, name: u?.name || 'Member', avatarUrl: u?.avatarUrl };
+        };
+
+        return {
+          id: log.id,
+          logDate: log.logDate,
+          createdAt: log.createdAt,
+          isVerified: log.isVerified,
+          status: log.status,
+          verificationImageUrl: signedUrl,
+          routineId: log.routine.id,
+          routineName: log.routine.routineName,
+          categoryName: log.routine.category?.name || 'Group',
+          userId: user?.id,
+          userName: user?.name,
+          userAvatar: user?.avatarUrl,
+          completionXp: log.routine.completionXp || 10,
+          submitterStreak: member?.streak || 0,
+          requiredApprovals,
+          approvalCount,
+          isCompletedByGroup: log.status === 'approved' && approvalCount >= requiredApprovals,
+          approvals: await Promise.all((log.approvals || []).map(mapMember)),
+          rejections: await Promise.all((log.rejections || []).map(mapMember)),
+        };
+      }),
+    );
   }
 
   async getApprovedLogCountMapByRoutine(routineId: string): Promise<Record<string, number>> {

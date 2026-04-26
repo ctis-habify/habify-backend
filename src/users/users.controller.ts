@@ -35,6 +35,13 @@ export class UsersController {
   }
 
   @UseGuards(AuthGuard)
+  @Get('me/analytics')
+  @ApiOperation({ summary: 'Get personal analytics summary (XP, streaks, routine counts)' })
+  async getAnalytics(@Req() req: Request) {
+    return this.usersService.getAnalytics(req.user.id);
+  }
+
+  @UseGuards(AuthGuard)
   @Get('search')
   async searchUsers(
     @Req() req: Request,
