@@ -17,7 +17,10 @@ export class VerificationController {
 
   @Post('submit')
   @ApiOkResponse({ type: Verification })
-  async submit(@Body() dto: SubmitVerificationDto, @Req() req: Request): Promise<Record<string, unknown>> {
+  async submit(
+    @Body() dto: SubmitVerificationDto,
+    @Req() req: Request,
+  ): Promise<Record<string, unknown>> {
     const userId = req.user.id;
     const saved = await this.verificationService.submit(dto, userId);
 

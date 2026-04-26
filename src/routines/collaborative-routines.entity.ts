@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  CreateDateColumn,
+} from 'typeorm';
 import { Category } from '../categories/categories.entity';
 import { RoutineMember } from './routine-members.entity';
 import { Gender } from '../users/users.entity';
@@ -25,6 +33,9 @@ export class CollaborativeRoutine {
 
   @Column({ type: 'date', name: 'start_date' })
   startDate: string;
+
+  @Column({ type: 'date', name: 'end_date', nullable: true })
+  endDate: string | null;
 
   @Column({ name: 'category_id' })
   categoryId: number;
@@ -60,6 +71,9 @@ export class CollaborativeRoutine {
 
   @Column({ type: 'int', default: 10, name: 'completion_xp' })
   completionXp: number;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
 
   @ManyToOne(() => Category)
   @JoinColumn({ name: 'category_id' })

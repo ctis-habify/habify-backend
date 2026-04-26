@@ -153,13 +153,21 @@ export class RoutineLogsService {
   }
 
   async listLogs(routineId: string, userId: string): Promise<RoutineLog[]> {
-    return await this.logsRepository.find({
-      where: {
-        userId,
-        routine: { id: routineId },
-      },
+    const logs = await this.logsRepository.find({
+      where: { userId, routine: { id: routineId } },
       order: { createdAt: 'DESC' },
     });
+
+    return Promise.all(
+      logs.map(async (log) => {
+        if (log.verificationImageUrl && !log.verificationImageUrl.startsWith('http')) {
+          log.verificationImageUrl = await this.gcsService
+            .getSignedReadUrl(log.verificationImageUrl, 3600)
+            .catch(() => log.verificationImageUrl);
+        }
+        return log;
+      }),
+    );
   }
 
   async getCalendarLogs(
@@ -168,10 +176,7 @@ export class RoutineLogsService {
     startDate: string,
     endDate: string,
   ): Promise<{ date: string; isDone: boolean }[]> {
-    if (!startDate || !endDate) {
-      return [];
-    }
-
+    if (!startDate || !endDate) return [];
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
     const end = new Date(endDate);
@@ -179,7 +184,7 @@ export class RoutineLogsService {
 
     const logs = await this.logsRepository.find({
       where: {
-        userId: userId,
+        userId,
         routine: { id: String(routineId) },
         isVerified: true,
         logDate: Between(start, end),
@@ -187,23 +192,15 @@ export class RoutineLogsService {
       order: { logDate: 'ASC' },
     });
 
-    return logs.map((log) => {
-      return {
-        date:
-          log.logDate instanceof Date
-            ? log.logDate.toISOString().split('T')[0]
-            : new Date(log.logDate).toISOString().split('T')[0],
-
-        isDone: true,
-      };
-    });
+    return logs.map((log) => ({
+      date: new Date(log.logDate).toISOString().split('T')[0],
+      isDone: true,
+    }));
   }
 
   private getStreakBonusPoints(streak: number): number {
-    if (streak < STREAK_BONUS_STEP) {
-      return 0;
-    }
-
-    return Math.floor(streak / STREAK_BONUS_STEP) * STREAK_BONUS_POINTS_PER_STEP;
+    return streak < STREAK_BONUS_STEP
+      ? 0
+      : Math.floor(streak / STREAK_BONUS_STEP) * STREAK_BONUS_POINTS_PER_STEP;
   }
 }

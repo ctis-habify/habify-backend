@@ -6,15 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { RoutineListItemDto } from 'src/common/dto/routines/routine-list-item.dto';
-import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
-import { Between, LessThanOrEqual, type Repository } from 'typeorm';
+import { LessThanOrEqual, type Repository } from 'typeorm';
 import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { Routine } from './routines.entity';
-import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
 import { isStreakBroken, isCompletedInCurrentCycle } from './routine-cycle.util';
-
-import { randomBytes } from 'crypto';
 import { Category } from 'src/categories/categories.entity';
 import { CreateCollaborativeRoutineDto } from 'src/common/dto/routines/create-collaborative-routine.dto';
 import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
@@ -24,12 +19,15 @@ import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-res
 import { RoutineList } from 'src/routine-lists/routine-lists.entity';
 import { Gender, User } from 'src/users/users.entity';
 import { UsersService } from 'src/users/users.service';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
 import { RoutineMember } from './routine-members.entity';
 import { CollaborativeScoreService } from 'src/collaborative-score/collaborative-score.service';
+import { RoutineLog } from '../routine-logs/routine-logs.entity';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AuditLogType } from '../audit-logs/audit-log.entity';
+import { randomBytes } from 'crypto';
+import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
+import { UpdateRoutineDto } from '../common/dto/routines/update-routine.dto';
 
 @Injectable()
 export class RoutinesService {
@@ -60,7 +58,6 @@ export class RoutinesService {
     private readonly auditLogsService: AuditLogsService,
   ) {}
 
-  // List routines by user
   async getUserRoutines(userId: string): Promise<Routine[]> {
     return this.routineRepo.find({
       where: { userId: userId },
@@ -68,7 +65,6 @@ export class RoutinesService {
     });
   }
 
-  //Get routine by id
   async getRoutineById(userId: string, routineId: string): Promise<Routine | null> {
     return this.routineRepo.findOne({
       where: { userId: userId, id: routineId },
@@ -82,11 +78,32 @@ export class RoutinesService {
     });
   }
 
-  // create new routine
+  private async getOrCreateDefaultList(userId: string): Promise<number> {
+    let list = await this.routineListRepo.findOne({
+      where: { userId, title: 'General' },
+    });
+    if (!list) {
+      let generalCategory = await this.categoryRepo.findOne({
+        where: { name: 'General' },
+      });
+      if (!generalCategory) {
+        generalCategory = await this.categoryRepo.save(
+          this.categoryRepo.create({ name: 'General', type: 'personal' }),
+        );
+      }
+      list = await this.routineListRepo.save(
+        this.routineListRepo.create({ userId, title: 'General', categoryId: generalCategory.id }),
+      );
+    }
+    return list.id;
+  }
+
   async createRoutine(data: CreateRoutineDto & { userId: string }): Promise<Routine> {
+    const listId = data.routineListId ?? (await this.getOrCreateDefaultList(data.userId));
+
     const routine = this.routineRepo.create({
       userId: data.userId,
-      routineListId: data.routineListId,
+      routineListId: listId,
       routineName: data.routineName,
       frequencyType: data.frequencyType,
       startTime: data.startTime ?? '00:00:00',
@@ -102,12 +119,9 @@ export class RoutinesService {
       name: saved.routineName,
     });
 
-    // Worker için ilk job
-
     return saved;
   }
 
-  // Create collaborative routine
   async createCollaborativeRoutine(
     data: CreateCollaborativeRoutineDto & { userId: string },
   ): Promise<CollaborativeRoutine> {
@@ -130,6 +144,7 @@ export class RoutinesService {
       genderRequirement: data.genderRequirement,
       xpRequirement: data.xpRequirement,
       completionXp: data.completionXp,
+      endDate: data.endDate ?? null,
     });
 
     const saved = await this.collaborativeRoutineRepo.save(routine);
@@ -184,7 +199,7 @@ export class RoutinesService {
       .leftJoinAndSelect('routine.category', 'category')
       .leftJoinAndSelect('routine.members', 'members')
       .where('routine.isPublic = :isPublic', { isPublic: true })
-      .orderBy('routine.startDate', 'DESC');
+      .orderBy('routine.createdAt', 'DESC');
 
     if (search) qb.andWhere('routine.routineName ILIKE :search', { search: `%${search}%` });
     if (categoryId) qb.andWhere('routine.categoryId = :categoryId', { categoryId });
@@ -214,6 +229,7 @@ export class RoutinesService {
       ageRequirement: routine.ageRequirement,
       genderRequirement: routine.genderRequirement,
       xpRequirement: routine.xpRequirement,
+      createdAt: routine.createdAt,
     }));
   }
 
@@ -237,7 +253,6 @@ export class RoutinesService {
     userId: string,
     routine: CollaborativeRoutine,
   ): Promise<{ message: string }> {
-    // Check if already a member
     const existing = await this.memberRepo.findOne({
       where: { userId, collaborativeRoutineId: routine.id },
     });
@@ -246,13 +261,11 @@ export class RoutinesService {
       return { message: 'You are already a member of this routine group' };
     }
 
-    // Check requirements
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // Age requirement check
     if (routine.ageRequirement) {
       if (!user.birthDate) {
         throw new BadRequestException(
@@ -267,7 +280,6 @@ export class RoutinesService {
       }
     }
 
-    // Gender requirement check
     if (routine.genderRequirement && routine.genderRequirement !== Gender.na) {
       if (user.gender !== routine.genderRequirement) {
         throw new BadRequestException(
@@ -307,10 +319,6 @@ export class RoutinesService {
     return age;
   }
 
-  /**
-   * Helper to perform "lazy reset" of streaks if the last completion was more than 1 day ago.
-   * This ensures streaks look correct even if background cron jobs did not run.
-   */
   private async syncStreak(
     entity: Routine | RoutineMember,
     todayStrOverride?: string,
@@ -318,13 +326,7 @@ export class RoutinesService {
     const todayStr = todayStrOverride || new Date().toISOString().split('T')[0];
     const lastDone = entity.lastCompletedDate;
 
-    // Determine startDate and frequencyType from either a Routine or RoutineMember
-    const isRoutine = (entity as any).routineName !== undefined;
-
-    this.logger.debug(
-      `syncStreak called for ${isRoutine ? 'Routine' : 'Member'} ${entity.id}. lastDone: ${lastDone}, today: ${todayStr}`,
-    );
-
+    const isRoutine = 'routineName' in entity;
     const frequencyType = isRoutine
       ? (entity as Routine).frequencyType
       : ((entity as RoutineMember).routine?.frequencyType ?? 'daily');
@@ -332,42 +334,27 @@ export class RoutinesService {
       ? (entity as Routine).startDate
       : ((entity as RoutineMember).routine?.startDate ?? todayStr);
 
-    // 1. Lazy Reset isAiVerified (Personal Routines only)
     if (isRoutine) {
       const routine = entity as Routine;
       const completedNow = isCompletedInCurrentCycle(frequencyType, startDate, lastDone, todayStr);
-
-      this.logger.debug(
-        `Routine ${routine.id} (freq: ${frequencyType}): isAiVerified=${routine.isAiVerified}, completedNow=${completedNow}`,
-      );
-
       if (routine.isAiVerified && !completedNow) {
-        this.logger.log(`Lazy Reset SUCCESS: Routine ${routine.id} isAiVerified set to false`);
         routine.isAiVerified = false;
         await this.routineRepo.save(routine);
       }
     }
 
-    if (!lastDone) {
-      return 0;
-    }
+    if (!lastDone) return 0;
 
-    const broken = isStreakBroken(frequencyType, startDate, lastDone, todayStr);
-
-    if (broken && entity.streak > 0) {
+    if (isStreakBroken(frequencyType, startDate, lastDone, todayStr) && entity.streak > 0) {
       entity.streak = 0;
-      if (isRoutine) {
-        await this.routineRepo.update(entity.id, { streak: 0 });
-      } else {
-        await this.memberRepo.update((entity as any).id, { streak: 0 });
-      }
+      const repo = isRoutine ? this.routineRepo : this.memberRepo;
+      await (repo as any).save(entity);
     }
 
     return entity.streak;
   }
 
   async getCollaborativeRoutines(userId: string): Promise<CollaborativeRoutine[]> {
-    // Returns routines where user is a member
     const memberships = await this.memberRepo.find({
       where: { userId },
       relations: ['routine', 'routine.category'],
@@ -380,14 +367,11 @@ export class RoutinesService {
       where: { id: routineId },
       relations: ['category', 'members', 'members.user'],
     });
+    if (!routine) throw new NotFoundException('Group not found');
 
-    if (!routine) {
-      throw new NotFoundException('Group not found');
-    }
-
-    const participantUserIds = routine.members.map((member) => member.userId);
-    const cupsByUserId = await this.collaborativeScoreService.getCupMapForUsers(participantUserIds);
-
+    const cups = await this.collaborativeScoreService.getCupMapForUsers(
+      routine.members.map((m) => m.userId),
+    );
     return {
       id: routine.id,
       name: routine.routineName,
@@ -408,8 +392,8 @@ export class RoutinesService {
         role: m.role,
         streak: m.streak,
         joinedAt: m.joinedAt,
-        cup: cupsByUserId[m.userId] ?? null,
-        cupTier: cupsByUserId[m.userId]?.tier ?? null,
+        cup: cups[m.userId] ?? null,
+        cupTier: cups[m.userId]?.tier ?? null,
       })),
     };
   }
@@ -417,207 +401,128 @@ export class RoutinesService {
   async removeMember(
     requesterId: string,
     routineId: string,
-    memberIdOrUsernameToRemove: string,
+    targetId: string,
   ): Promise<{ message: string }> {
-    const routine = await this.collaborativeRoutineRepo.findOne({
-      where: { id: routineId },
-    });
+    const routine = await this.getCollaborativeRoutineById(routineId);
+    if (!routine) throw new NotFoundException('Routine not found');
 
-    if (!routine) {
-      throw new NotFoundException('Collaborative routine not found');
+    const members = await this.memberRepo.find({
+      where: { collaborativeRoutineId: routineId },
+      relations: ['user'],
+    });
+    const requester = members.find((m) => m.userId === requesterId);
+    const target = members.find((m) => m.userId === targetId || m.user?.username === targetId);
+    if (!requester || !target) throw new ForbiddenException('Access denied');
+
+    if (requesterId !== target.userId && requester.role !== 'creator') {
+      throw new ForbiddenException('Only creator can remove others');
     }
 
-    const requesterMembership = await this.memberRepo.findOne({
-      where: { collaborativeRoutineId: routineId, userId: requesterId },
-    });
-
-    if (!requesterMembership) {
-      throw new ForbiddenException('You are not a member of this routine');
-    }
-
-    // Resolve username to user ID if it's not a UUID
-    let targetUserId = memberIdOrUsernameToRemove;
-    if (!targetUserId.includes('-')) {
-      const targetUser = await this.userRepo.findOne({
-        where: { name: memberIdOrUsernameToRemove },
-      });
-      if (!targetUser) {
-        throw new NotFoundException('User with that name not found');
+    if (target.role === 'creator') {
+      const next = members.find((m) => m.userId !== target.userId);
+      if (next) {
+        next.role = 'creator';
+        routine.creatorId = next.userId;
+        await Promise.all([
+          this.memberRepo.save(next),
+          this.collaborativeRoutineRepo.save(routine),
+        ]);
+      } else {
+        await this.collaborativeRoutineRepo.remove(routine);
+        return { message: 'Routine deleted' };
       }
-      targetUserId = targetUser.id;
     }
 
-    // Find the member to remove
-    const memberToRemove = await this.memberRepo.findOne({
-      where: { collaborativeRoutineId: routineId, userId: targetUserId },
-    });
-
-    if (!memberToRemove) {
-      throw new NotFoundException('User is not a member of this routine');
-    }
-
-    if (requesterId !== memberToRemove.userId && requesterMembership.role !== 'creator') {
-      throw new ForbiddenException('Only the creator can remove other members');
-    }
-
-    if (requesterId === memberToRemove.userId && requesterMembership.role === 'creator') {
-      throw new BadRequestException(
-        'The creator cannot leave the routine. Please delete the routine instead.',
-      );
-    }
-
-    await this.memberRepo.remove(memberToRemove);
-
-    return { message: 'Member removed successfully' };
+    await this.memberRepo.remove(target);
+    return { message: 'Member removed' };
   }
 
-  /**
-   * Called when the creator of a defeated (lives = 0) collaborative routine
-   * needs to be removed.
-   *
-   * - If the creator is the sole member  → the entire routine is deleted.
-   * - If other members exist             → the creator is removed and a
-   *   random remaining member is promoted to 'creator'.
-   */
   async handleCreatorDefeat(routineId: string): Promise<{ message: string }> {
     const routine = await this.collaborativeRoutineRepo.findOne({
       where: { id: routineId },
       relations: ['members'],
     });
+    if (!routine) throw new NotFoundException('Routine not found');
 
-    if (!routine) {
-      throw new NotFoundException('Collaborative routine not found');
-    }
-
-    const remainingMembers = routine.members;
-
-    if (remainingMembers.length <= 1) {
-      // Creator is the only member — delete the whole routine
+    const others = routine.members.filter((m) => m.role !== 'creator');
+    if (others.length === 0) {
       await this.collaborativeRoutineRepo.delete(routineId);
-      this.logger.log(`Routine ${routineId} deleted: creator was the sole member after defeat.`);
-      return { message: 'Routine deleted: you were the last member' };
+      return { message: 'Routine deleted' };
     }
 
-    // Multiple members — remove creator and promote a random other member
-    const creatorMembership = remainingMembers.find((m) => m.role === 'creator');
-    if (!creatorMembership) {
-      throw new NotFoundException('Creator membership not found');
-    }
+    const creator = routine.members.find((m) => m.role === 'creator');
+    const next = others[Math.floor(Math.random() * others.length)];
+    next.role = 'creator';
+    routine.creatorId = next.userId;
 
-    const otherMembers = remainingMembers.filter((m) => m.role !== 'creator');
-    const newCreatorMembership = otherMembers[Math.floor(Math.random() * otherMembers.length)];
+    await Promise.all([
+      this.memberRepo.save(next),
+      this.collaborativeRoutineRepo.save(routine),
+      creator ? this.memberRepo.remove(creator) : Promise.resolve(),
+    ]);
 
-    // Promote new creator
-    newCreatorMembership.role = 'creator';
-    await this.memberRepo.save(newCreatorMembership);
-
-    // Update creatorId on the routine entity
-    routine.creatorId = newCreatorMembership.userId;
-    await this.collaborativeRoutineRepo.save(routine);
-
-    // Remove the old creator's membership
-    await this.memberRepo.remove(creatorMembership);
-
-    this.logger.log(
-      `Routine ${routineId}: creator removed after defeat, ` +
-        `new creator is user ${newCreatorMembership.userId}.`,
-    );
-
-    return {
-      message: `You were removed from the routine. A new admin has been assigned.`,
-    };
+    return { message: 'New creator assigned' };
   }
 
-  // update routine (Personal or Collaborative)
   async updateRoutine(
     userId: string,
     routineId: string,
     dto: UpdateRoutineDto,
   ): Promise<Routine | CollaborativeRoutine> {
-    // 1. Try personal
-    const personalRoutine = await this.routineRepo.findOne({
-      where: { id: routineId, userId: userId },
-    });
-
-    if (personalRoutine) {
-      const oldFreq = personalRoutine.frequencyType?.toLowerCase();
-      const newFreq = dto.frequencyType?.toLowerCase();
-
-      if (dto.routineName) personalRoutine.routineName = dto.routineName;
-      if (dto.frequencyType) personalRoutine.frequencyType = dto.frequencyType;
-      if (dto.startDate) personalRoutine.startDate = dto.startDate;
-
-      if (oldFreq === 'daily' && newFreq === 'weekly') {
-        personalRoutine.startTime = '00:00:00';
-        personalRoutine.endTime = '23:59:59';
+    const personal = await this.routineRepo.findOne({ where: { id: routineId, userId } });
+    if (personal) {
+      const oldFreq = personal.frequencyType?.toLowerCase();
+      if (dto.routineName) personal.routineName = dto.routineName;
+      if (dto.frequencyType) personal.frequencyType = dto.frequencyType;
+      if (dto.startDate) personal.startDate = dto.startDate;
+      if (oldFreq === 'daily' && dto.frequencyType?.toLowerCase() === 'weekly') {
+        personal.startTime = '00:00:00';
+        personal.endTime = '23:59:59';
       } else {
-        if (dto.startTime) personalRoutine.startTime = dto.startTime;
-        if (dto.endTime) personalRoutine.endTime = dto.endTime;
+        if (dto.startTime) personal.startTime = dto.startTime;
+        if (dto.endTime) personal.endTime = dto.endTime;
       }
-
-      return this.routineRepo.save(personalRoutine);
+      if (dto.active !== undefined) personal.active = dto.active;
+      return this.routineRepo.save(personal);
     }
 
-    // 2. Try collaborative (only if user is creator)
-    const collabRoutine = await this.collaborativeRoutineRepo.findOne({
+    const collab = await this.collaborativeRoutineRepo.findOne({
       where: { id: routineId, creatorId: userId },
     });
-
-    if (collabRoutine) {
-      const oldFreq = collabRoutine.frequencyType?.toLowerCase();
-      const newFreq = dto.frequencyType?.toLowerCase();
-
-      if (dto.routineName) collabRoutine.routineName = dto.routineName;
-      if (dto.frequencyType) collabRoutine.frequencyType = dto.frequencyType;
-      if (dto.startDate) collabRoutine.startDate = dto.startDate;
-
-      if (oldFreq === 'daily' && newFreq === 'weekly') {
-        collabRoutine.startTime = '00:00:00';
-        collabRoutine.endTime = '23:59:59';
-      } else {
-        if (dto.startTime) collabRoutine.startTime = dto.startTime;
-        if (dto.endTime) collabRoutine.endTime = dto.endTime;
-      }
-
-      return this.collaborativeRoutineRepo.save(collabRoutine);
+    if (collab) {
+      if (dto.routineName) collab.routineName = dto.routineName;
+      if (dto.frequencyType) collab.frequencyType = dto.frequencyType;
+      if (dto.startDate) collab.startDate = dto.startDate;
+      if (dto.startTime) collab.startTime = dto.startTime;
+      if (dto.endTime) collab.endTime = dto.endTime;
+      return this.collaborativeRoutineRepo.save(collab);
     }
-
-    throw new NotFoundException('Routine not found or access denied');
+    throw new NotFoundException('Routine not found');
   }
 
   async deleteRoutine(userId: string, routineId: string): Promise<{ message: string }> {
-    // 1. Try to find and delete personal routine
-    const personalRoutine = await this.routineRepo.findOne({
-      where: { userId, id: routineId },
-    });
-
-    if (personalRoutine) {
-      await this.routineRepo.delete(routineId);
+    const personal = await this.routineRepo.findOne({ where: { id: routineId, userId } });
+    if (personal) {
+      await this.routineRepo.remove(personal);
       await this.auditLogsService.log('ROUTINE_DELETE', AuditLogType.operational, userId, {
         routineId,
         type: 'personal',
       });
-
-      return { message: 'ROUTINE IS DELETED SUCCESSFULLY' };
+      return { message: 'Deleted' };
     }
 
-    // 2. Try to find and delete collaborative routine (if user is creator)
-    const collabRoutine = await this.collaborativeRoutineRepo.findOne({
+    const collab = await this.collaborativeRoutineRepo.findOne({
       where: { id: routineId, creatorId: userId },
     });
-
-    if (collabRoutine) {
-      await this.collaborativeRoutineRepo.delete(routineId);
+    if (collab) {
+      await this.collaborativeRoutineRepo.remove(collab);
       await this.auditLogsService.log('ROUTINE_DELETE', AuditLogType.operational, userId, {
         routineId,
         type: 'collaborative',
       });
-
-      return { message: 'ROUTINE IS DELETED SUCCESSFULLY' };
+      return { message: 'Deleted' };
     }
-
-    // 3. If not found in either or not authorized, throw NotFoundException
-    throw new NotFoundException('Routine not found or you do not have permission to delete it');
+    throw new NotFoundException('Routine not found');
   }
 
   async getAllRoutinesByList(
@@ -626,178 +531,73 @@ export class RoutinesService {
   ): Promise<RoutineListWithRoutinesDto[]> {
     const today = todayStr || new Date().toISOString().split('T')[0];
     const lists = await this.routineListRepo.find({
-      where: { userId: userId },
+      where: { userId },
       relations: ['category', 'routines'],
       order: { id: 'ASC' },
     });
 
-    const result: RoutineListWithRoutinesDto[] = [];
-
-    for (const list of lists) {
-      const routinesSorted = [...(list.routines ?? [])].sort((a, b) =>
-        a.startTime.localeCompare(b.startTime),
-      );
-
-      const routineDtos: RoutineListItemDto[] = [];
-      this.logger.log(`Processing list ${list.id} for user ${userId}. Routines count: ${list.routines?.length || 0}`);
-
-      for (const routine of routinesSorted) {
-        // Apply lazy streak sync & completion reset
-        const syncedStreak = await this.syncStreak(routine, today);
-
-        // Recalculate remaining minutes based on frequency logic
-        const now = new Date();
-        let endAt = new Date();
-        const [h, m, s] = routine.endTime.split(':').map(Number);
-
-        let isWeeklyPending = false;
-
-        const frequencyLower = routine.frequencyType.toLowerCase();
-
-        if (frequencyLower === 'weekly') {
-          // Weekly: Reset every 7 days from start_date
-          // Parse start_date (YYYY-MM-DD)
-          const [sy, sm, sd] = routine.startDate.split('-').map(Number);
-          const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-
-          // Calculate days passed since start
-          const diffTime = now.getTime() - start.getTime();
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-          // Current cycle index (0 for first week, 1 for second...)
-          // If diffDays is negative (future start), cycle is 0
-          const currentCycleIndex = diffDays >= 0 ? Math.floor(diffDays / 7) : 0;
-
-          // Calculate which day of the cycle we are in (0-6)
-          const currentCycleDay = diffDays >= 0 ? diffDays % 7 : 0;
-
-          // If we are NOT in the 7th day (index 6), it is pending
-          if (currentCycleDay < 6) {
-            isWeeklyPending = true;
-          }
-
-          // Target day is the 7th day of the current cycle (Start + index*7 + 6 days)
-          // Weekly deadline is always 23:59:59 on the 7th day
-          const daysToAdd = currentCycleIndex * 7 + 6;
-
-          endAt = new Date(start.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-          endAt.setHours(23, 59, 59, 999);
-        } else {
-          // Daily (or others treated as daily): Reset every day after 00:00
-          // Target is Today at end_time
-          endAt = new Date(); // Today
-          endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
-        }
-
-        const diffMs = endAt.getTime() - now.getTime();
-        const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
-
-        let remainingLabel = '';
-
-        if (frequencyLower === 'weekly' && isWeeklyPending && remainingMinutes > 0) {
-          remainingLabel = 'Pending';
-        } else {
-          if (remainingMinutes > 1440) {
-            // More than 24 hours (Daily case or fail-safe)
-            const remainingDays = Math.ceil(remainingMinutes / 1440);
-            remainingLabel = `${remainingDays} Days`;
-          } else {
-            remainingLabel = this.formatRemainingLabel(remainingMinutes);
-          }
-        }
-        const isDone = routine.isAiVerified;
-
-        if (remainingMinutes <= 0 && !isDone) {
-          remainingLabel = 'Failed';
-        }
-
-        routineDtos.push({
-          id: routine.id,
-          routineName: routine.routineName,
-          frequencyType: routine.frequencyType,
-          startTime: routine.startTime,
-          endTime: routine.endTime,
-          startDate: routine.startDate,
-          remainingMinutes: remainingMinutes,
-          remainingLabel,
-          isDone: isDone,
-          streak: syncedStreak,
-          routineListId: 0,
-        });
-      }
-
-      result.push({
+    return Promise.all(
+      lists.map(async (list) => ({
         routineListId: list.id,
         routineListTitle: list.title,
         categoryId: list.categoryId,
-        categoryName: list.category?.name ?? null,
-        routines: routineDtos,
-      });
-    }
-
-    return result;
+        categoryName: list.category?.name || 'General',
+        routines: await Promise.all(
+          (list.routines ?? []).map(async (r) => {
+            const { remainingMinutes } = this.getRoutineTiming(r.endTime);
+            return {
+              id: r.id,
+              routineName: r.routineName,
+              routineListId: r.routineListId,
+              frequencyType: r.frequencyType,
+              startTime: r.startTime,
+              endTime: r.endTime,
+              startDate: r.startDate,
+              remainingMinutes,
+              remainingLabel: this.formatRemainingLabel(remainingMinutes),
+              isDone: r.isAiVerified,
+              streak: await this.syncStreak(r, today),
+            };
+          }),
+        ),
+      })),
+    );
   }
 
   private formatRemainingLabel(remainingMinutes: number): string {
     if (remainingMinutes <= 0) return 'Done';
-
-    if (remainingMinutes >= 60) {
-      const hours = Math.ceil(remainingMinutes / 60);
-      return `${hours} Hours`;
-    }
+    if (remainingMinutes >= 60) return `${Math.ceil(remainingMinutes / 60)} Hours`;
     return `${remainingMinutes} Minutes`;
+  }
+
+  private getRoutineTiming(endTime: string) {
+    const [h, m, s] = endTime.split(':').map(Number);
+    const endAt = new Date();
+    endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+    const diffMs = endAt.getTime() - new Date().getTime();
+    const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+    return { endAt, remainingMinutes };
   }
 
   async getTodayRoutines(userId: string, todayStr?: string): Promise<TodayScreenResponseDto> {
     const todayString = todayStr || new Date().toISOString().split('T')[0];
-    const today = new Date(todayString + 'T00:00:00Z');
 
-    // 1. Fetch Personal Routines
-    const personalRoutines = await this.routineRepo.find({
-      where: {
-        userId: userId,
-        startDate: LessThanOrEqual(todayString),
-      },
-      relations: ['routineList'],
-    });
+    const [personalRoutines, memberships] = await Promise.all([
+      this.routineRepo.find({
+        where: { userId, startDate: LessThanOrEqual(todayString) },
+        relations: ['routineList'],
+      }),
+      this.memberRepo.find({
+        where: { userId },
+        relations: ['routine', 'routine.category'],
+      }),
+    ]);
 
-    // 2. Fetch Collaborative Memberships
-    const memberships = await this.memberRepo.find({
-      where: { userId: userId },
-      relations: ['routine', 'routine.category'],
-    });
+    const routines: any[] = [];
 
-    const activeCollabRoutines = memberships
-      .filter((m) => m.routine.startDate <= todayString)
-      .map((m) => m.routine);
-
-    // 3. Merged logic for individual streak and completion
-    // Process Personal Routines
-    const personalResults: any[] = [];
     for (const routine of personalRoutines) {
-      if (
-        routine.frequencyType.toLowerCase() !== 'daily' &&
-        routine.frequencyType.toLowerCase() !== 'weekly'
-      ) {
-        continue;
-      }
-
-      const [h, m, s] = routine.endTime.split(':').map(Number);
-      const endAt = new Date();
-      endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
-
-      const now = new Date();
-      const diffMs = endAt.getTime() - now.getTime();
-      const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
-
-      const remainingLabel =
-        routine.frequencyType.toLowerCase() === 'weekly'
-          ? 'Pending'
-          : this.formatRemainingLabel(remainingMinutes);
-
-      const syncedStreak = await this.syncStreak(routine, todayString);
-
-      personalResults.push({
+      const { remainingMinutes } = this.getRoutineTiming(routine.endTime);
+      routines.push({
         id: routine.id,
         title: routine.routineName,
         category: routine.routineList?.title || 'General',
@@ -805,96 +605,59 @@ export class RoutinesService {
         endTime: routine.endTime,
         frequency: routine.frequencyType,
         isCompleted: routine.isAiVerified,
-        remainingLabel: remainingLabel,
-        streak: syncedStreak,
+        remainingLabel:
+          routine.frequencyType.toLowerCase() === 'weekly'
+            ? 'Pending'
+            : this.formatRemainingLabel(remainingMinutes),
+        streak: await this.syncStreak(routine, todayString),
       });
     }
 
-    // Process Collaborative Routines
-    const collabResults: any[] = [];
-    for (const routine of activeCollabRoutines) {
-      if (
-        routine.frequencyType.toLowerCase() !== 'daily' &&
-        routine.frequencyType.toLowerCase() !== 'weekly'
-      ) {
-        continue;
-      }
-
-      const membership = memberships.find((m) => m.collaborativeRoutineId === routine.id);
-      if (!membership) continue;
-
-      const [h, m, s] = routine.endTime.split(':').map(Number);
-      const endAt = new Date();
-      endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
-
-      const now = new Date();
-      const diffMs = endAt.getTime() - now.getTime();
-      const remainingMinutes = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
-
-      const syncedStreak = await this.syncStreak(membership, todayString);
-
-      collabResults.push({
-        id: routine.id,
-        title: routine.routineName,
-        category: routine.category?.name || 'Group',
-        startTime: routine.startTime,
-        endTime: routine.endTime,
-        frequency: routine.frequencyType,
+    for (const m of memberships) {
+      if (m.routine.startDate > todayString) continue;
+      const { remainingMinutes } = this.getRoutineTiming(m.routine.endTime);
+      routines.push({
+        id: m.routine.id,
+        title: m.routine.routineName,
+        category: m.routine.category?.name || 'Group',
+        startTime: m.routine.startTime,
+        endTime: m.routine.endTime,
+        frequency: m.routine.frequencyType,
         isCompleted: isCompletedInCurrentCycle(
-          routine.frequencyType,
-          routine.startDate,
-          membership.lastCompletedDate,
+          m.routine.frequencyType,
+          m.routine.startDate,
+          m.lastCompletedDate,
           todayString,
         ),
         remainingLabel: this.formatRemainingLabel(remainingMinutes),
-        streak: syncedStreak,
+        streak: await this.syncStreak(m, todayString),
       });
     }
 
-    const routines = [...personalResults, ...collabResults];
-
-    // Get User Streak
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
     let streak = user.dailyStreak ?? 0;
-
-    // Apply Lazy User Streak Reset
-    const yesterday = new Date(todayString + 'T00:00:00Z');
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayStr = new Date(new Date(todayString).getTime() - 86400000)
+      .toISOString()
+      .split('T')[0];
 
     if (
       user.lastStreakDate &&
-      user.lastStreakDate !== todayStr &&
-      user.lastStreakDate !== yesterdayStr
+      user.lastStreakDate !== todayString &&
+      user.lastStreakDate !== yesterdayStr &&
+      user.dailyStreak > 0
     ) {
-      if (user.dailyStreak > 0) {
-        this.logger.log(
-          `Lazy resetting daily streak for user ${userId} (last date was ${user.lastStreakDate})`,
-        );
-        await this.userRepo.update(userId, { dailyStreak: 0 });
-        streak = 0;
-      }
-    }
-
-    // Real-time failure check: if ANY routine for today has passed its end time and is not completed
-    const hasAnyFailureToday = routines.some((r) => {
-      if (r.isCompleted) return false;
-      const [h, m, s] = r.endTime.split(':').map(Number);
-      const endAt = new Date();
-      endAt.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
-      return new Date() > endAt;
-    });
-
-    if (hasAnyFailureToday) {
+      await this.userRepo.update(userId, { dailyStreak: 0 });
       streak = 0;
     }
 
-    return {
-      routines,
-      streak,
-    };
+    const hasAnyFailureToday = routines.some(
+      (r) => !r.isCompleted && new Date() > this.getRoutineTiming(r.endTime).endAt,
+    );
+    if (hasAnyFailureToday) streak = 0;
+
+    return { routines, streak };
   }
 
   async viewCollaborativeRoutines(userId: string): Promise<CollaborativeRoutineViewDto[]> {

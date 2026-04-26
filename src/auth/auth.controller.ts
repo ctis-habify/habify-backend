@@ -22,8 +22,7 @@ export class AuthController {
   @Post('login')
   @ApiOkResponse({ description: 'Login successful, JWT returned.' })
   login(@Body() dto: LoginDto): Promise<{ user: Partial<User>; accessToken: string }> {
-    // passes the login data to the service and returns the result
-    return this.authService.login(dto.email, dto.password);
+    return this.authService.login(dto.email, dto.password, dto.rememberMe);
   }
 
   @Post('forgot-password')

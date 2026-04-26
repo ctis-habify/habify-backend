@@ -7,7 +7,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { RoutinesModule } from '../routines/routines.module';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-
+import { XpLogsModule } from '../xp-logs/xp-logs.module';
+import { CollaborativeScoreModule } from '../collaborative-score/collaborative-score.module';
 
 @Module({
   imports: [
@@ -16,6 +17,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
     RoutinesModule,
     AuditLogsModule,
     NotificationsModule,
+    XpLogsModule,
+    CollaborativeScoreModule,
   ],
 
   controllers: [SchedulerController],

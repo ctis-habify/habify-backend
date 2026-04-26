@@ -13,7 +13,6 @@ export enum AuditLogType {
   operational = 'OPERATIONAL',
 }
 
-
 @Entity('audit_logs')
 export class AuditLog {
   @PrimaryGeneratedColumn()
@@ -34,12 +33,10 @@ export class AuditLog {
     enum: AuditLogType,
     default: AuditLogType.operational,
   })
-
   type: AuditLogType;
 
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, unknown>; // Extra info like IP, user agent, or record IDs
-
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

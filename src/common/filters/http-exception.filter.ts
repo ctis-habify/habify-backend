@@ -27,16 +27,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const message =
-      exception instanceof HttpException
-        ? exception.message
-        : 'Internal server error';
+      exception instanceof HttpException ? exception.message : 'Internal server error';
 
-    const user = (request as Request & { user?: { sub?: string | number; id?: string | number } })['user'];
+    const user = (request as Request & { user?: { sub?: string | number; id?: string | number } })[
+      'user'
+    ];
 
     const entry: ErrorLogEntry = {
       timestamp: new Date().toISOString(),
@@ -63,10 +61,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getResponse()
         : { statusCode: status, message: 'Internal server error' };
 
-    response.status(status).json(
-      typeof responseBody === 'object' && responseBody !== null
-        ? { ...responseBody as object, timestamp: entry.timestamp }
-        : responseBody,
-    );
+    response
+      .status(status)
+      .json(
+        typeof responseBody === 'object' && responseBody !== null
+          ? { ...(responseBody as object), timestamp: entry.timestamp }
+          : responseBody,
+      );
   }
 }

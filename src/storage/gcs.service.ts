@@ -1,10 +1,11 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { Storage, Bucket, StorageOptions } from '@google-cloud/storage';
 import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
 export class GcsService {
+  private readonly logger = new Logger(GcsService.name);
   private readonly storage?: Storage;
   private readonly bucket?: Bucket;
   private readonly initError?: string;
@@ -26,12 +27,32 @@ export class GcsService {
 
     const storageOptions: StorageOptions = { projectId };
 
-    if (gcsKeyJson && gcsKeyJson.startsWith('{')) {
+    if (gcsKeyJson) {
       try {
-        storageOptions.credentials = JSON.parse(gcsKeyJson);
+        // Strip potential surrounding single or double quotes
+        let cleanJson = gcsKeyJson.trim();
+        if (
+          (cleanJson.startsWith("'") && cleanJson.endsWith("'")) ||
+          (cleanJson.startsWith('"') && cleanJson.endsWith('"'))
+        ) {
+          cleanJson = cleanJson.substring(1, cleanJson.length - 1);
+        }
+
+        if (cleanJson.startsWith('{')) {
+          const creds = JSON.parse(cleanJson);
+          if (creds.private_key) {
+            creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+          }
+          storageOptions.credentials = creds;
+        } else {
+          throw new Error(
+            'GCS_KEY_JSON does not appear to be a valid JSON object (must start with {)',
+          );
+        }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         this.initError = `Invalid GCS_KEY_JSON content: ${message}`;
+        this.logger.error(this.initError);
         return;
       }
     } else if (credentialsPathRaw) {
@@ -110,7 +131,9 @@ export class GcsService {
         action: 'read',
         expires: expiresMs,
       });
-    } catch {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`GCS getSignedReadUrl failed for path "${path}": ${message}`);
       throw new ServiceUnavailableException(
         'GCS credentials are invalid or missing. Check GOOGLE_APPLICATION_CREDENTIALS and service account access.',
       );

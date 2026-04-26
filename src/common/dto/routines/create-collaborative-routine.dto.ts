@@ -1,5 +1,5 @@
-import { IsEnum, IsOptional, IsString, IsBoolean, IsInt } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsDateString, IsEnum, IsOptional, IsString, IsBoolean, IsInt } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateRoutineDto } from './create-routines.dto';
 import { Gender } from 'src/users/users.entity';
 
@@ -65,4 +65,12 @@ export class CreateCollaborativeRoutineDto extends CreateRoutineDto {
   @IsInt()
   @IsOptional()
   completionXp?: number;
+
+  @ApiPropertyOptional({
+    example: '2025-12-31',
+    description: 'End date of the collaborative routine',
+  })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 }

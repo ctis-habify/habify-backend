@@ -37,7 +37,6 @@ export class AuditLogsService {
         error instanceof Error ? error.stack : undefined,
       );
     }
-
   }
 
   /**
@@ -59,7 +58,7 @@ export class AuditLogsService {
 
     const deletedCount = result.affected || 0;
     this.logger.log(`Audit log cleanup completed. Deleted ${deletedCount} entries.`);
-    
+
     return deletedCount;
   }
 

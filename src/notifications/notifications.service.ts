@@ -82,16 +82,13 @@ export class NotificationsService {
   }
 
   private async processRoutineReminder(routine: Routine, now: Date): Promise<void> {
-    const deadline = this.calculateDeadline(routine, now);
+    const deadline = this.getDeadline(routine, now);
     if (!deadline || now >= deadline) return;
 
-    const isCompleted = await this.isRoutineCompleted(routine, now);
-    if (isCompleted) return;
+    if (await this.isCompleted(routine, routine.userId, now)) return;
 
-    const remainingMs = deadline.getTime() - now.getTime();
-    const remainingMin = Math.ceil(remainingMs / (60 * 1000));
-    const timeLabel = this.formatTimeRemaining(remainingMin);
-    const body = `"${routine.routineName}" is still unfinished – ${timeLabel} remaining.`;
+    const remainingMin = Math.ceil((deadline.getTime() - now.getTime()) / 60000);
+    const body = `"${routine.routineName}" is still unfinished – ${this.formatTimeRemaining(remainingMin)} remaining.`;
 
     const rows: Notification[] = await this.notificationRepo.query(
       `INSERT INTO notifications (user_id, routine_id, type, title, body, push_sent, is_read)
@@ -105,9 +102,7 @@ export class NotificationsService {
       [routine.userId, routine.id, 'task_reminder', 'Routine Reminder', body],
     );
 
-    if (rows.length > 0) {
-      await this.sendPushNotification(routine.userId, rows[0]);
-    }
+    if (rows.length > 0) await this.sendPushNotification(routine.userId, rows[0]);
   }
 
   private async processCollabRoutineReminder(
@@ -115,16 +110,13 @@ export class NotificationsService {
     member: RoutineMember,
     now: Date,
   ): Promise<void> {
-    const deadline = this.calculateCollabDeadline(routine, now);
+    const deadline = this.getDeadline(routine, now);
     if (!deadline || now >= deadline) return;
 
-    const isCompleted = await this.isCollabRoutineCompleted(routine, member.userId, now);
-    if (isCompleted) return;
+    if (await this.isCompleted(routine, member.userId, now)) return;
 
-    const remainingMs = deadline.getTime() - now.getTime();
-    const remainingMin = Math.ceil(remainingMs / (60 * 1000));
-    const timeLabel = this.formatTimeRemaining(remainingMin);
-    const body = `[Group] "${routine.routineName}" is still unfinished – ${timeLabel} remaining.`;
+    const remainingMin = Math.ceil((deadline.getTime() - now.getTime()) / 60000);
+    const body = `[Group] "${routine.routineName}" is still unfinished – ${this.formatTimeRemaining(remainingMin)} remaining.`;
 
     const rows: Notification[] = await this.notificationRepo.query(
       `INSERT INTO notifications (user_id, collaborative_routine_id, type, title, body, push_sent, is_read)
@@ -138,161 +130,70 @@ export class NotificationsService {
       [member.userId, routine.id, 'task_reminder', 'Group Routine Reminder', body],
     );
 
-    if (rows.length > 0) {
-      await this.sendPushNotification(member.userId, rows[0]);
-    }
+    if (rows.length > 0) await this.sendPushNotification(member.userId, rows[0]);
   }
 
-  private calculateCollabDeadline(routine: CollaborativeRoutine, now: Date): Date | null {
+  private getDeadline(routine: Routine | CollaborativeRoutine, now: Date): Date | null {
     const freq = routine.frequencyType?.toLowerCase();
-
     if (freq === 'daily') {
       const [h, m, s] = (routine.endTime || '23:59:59').split(':').map(Number);
-      const deadline = new Date(now);
-      deadline.setHours(h ?? 23, m ?? 59, s ?? 59, 0);
-      return deadline;
+      const d = new Date(now);
+      d.setHours(h ?? 23, m ?? 59, s ?? 59, 0);
+      return d;
     }
-
     if (freq === 'weekly') {
       const [sy, sm, sd] = routine.startDate.split('-').map(Number);
       const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-      const diffTime = now.getTime() - start.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const diffDays = Math.floor((now.getTime() - start.getTime()) / 86400000);
       if (diffDays < 0) return null;
-
-      const currentCycleIndex = Math.floor(diffDays / 7);
-      const daysToAdd = currentCycleIndex * 7 + 6;
-      const deadline = new Date(start.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+      const deadline = new Date(start.getTime() + (Math.floor(diffDays / 7) * 7 + 6) * 86400000);
       deadline.setHours(23, 59, 59, 999);
       return deadline;
     }
-
     return null;
   }
 
-  private async isCollabRoutineCompleted(
-    routine: CollaborativeRoutine,
+  private async isCompleted(
+    routine: Routine | CollaborativeRoutine,
     userId: string,
     now: Date,
   ): Promise<boolean> {
+    const isCollab = 'members' in routine || !('userId' in routine);
+    const repo = isCollab ? this.collabLogRepo : this.logRepo;
     const freq = routine.frequencyType?.toLowerCase();
 
+    let start: Date, end: Date;
     if (freq === 'daily') {
-      const startOfDay = new Date(now);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(now);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      const log = await this.collabLogRepo.findOne({
-        where: {
-          userId,
-          routine: { id: routine.id },
-          logDate: Between(startOfDay, endOfDay),
-          isVerified: true,
-        },
-        relations: ['routine'],
-      });
-      return !!log;
-    }
-
-    if (freq === 'weekly') {
+      start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(now);
+      end.setHours(23, 59, 59, 999);
+    } else if (freq === 'weekly') {
       const [sy, sm, sd] = routine.startDate.split('-').map(Number);
-      const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-      const diffTime = now.getTime() - start.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      const currentCycleIndex = diffDays >= 0 ? Math.floor(diffDays / 7) : 0;
+      const cycleStart = new Date(
+        new Date(sy, sm - 1, sd, 0, 0, 0, 0).getTime() +
+          Math.floor(
+            Math.floor(
+              (now.getTime() - new Date(sy, sm - 1, sd, 0, 0, 0, 0).getTime()) / 86400000,
+            ) / 7,
+          ) *
+            7 *
+            86400000,
+      );
+      start = cycleStart;
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start.getTime() + 7 * 86400000 - 1);
+    } else return false;
 
-      const cycleStart = new Date(start.getTime() + currentCycleIndex * 7 * 24 * 60 * 60 * 1000);
-      cycleStart.setHours(0, 0, 0, 0);
-      const cycleEnd = new Date(cycleStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+    const where: any = {
+      userId,
+      routine: { id: routine.id },
+      logDate: Between(start, end),
+      isVerified: true,
+    };
+    if (!isCollab) where.userId = (routine as Routine).userId;
 
-      const log = await this.collabLogRepo.findOne({
-        where: {
-          userId,
-          routine: { id: routine.id },
-          logDate: Between(cycleStart, cycleEnd),
-          isVerified: true,
-        },
-        relations: ['routine'],
-      });
-      return !!log;
-    }
-
-    return false;
-  }
-
-  private calculateDeadline(routine: Routine, now: Date): Date | null {
-    const freq = routine.frequencyType?.toLowerCase();
-
-    if (freq === 'daily') {
-      const [h, m, s] = (routine.endTime || '23:59:59').split(':').map(Number);
-      const deadline = new Date(now);
-      deadline.setHours(h ?? 23, m ?? 59, s ?? 59, 0);
-      return deadline;
-    }
-
-    if (freq === 'weekly') {
-      const [sy, sm, sd] = routine.startDate.split('-').map(Number);
-      const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-      const diffTime = now.getTime() - start.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays < 0) return null;
-
-      const currentCycleIndex = Math.floor(diffDays / 7);
-      const daysToAdd = currentCycleIndex * 7 + 6;
-      const deadline = new Date(start.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-      deadline.setHours(23, 59, 59, 999);
-      return deadline;
-    }
-
-    return null;
-  }
-
-  private async isRoutineCompleted(routine: Routine, now: Date): Promise<boolean> {
-    const freq = routine.frequencyType?.toLowerCase();
-
-    if (freq === 'daily') {
-      const startOfDay = new Date(now);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(now);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      const log = await this.logRepo.findOne({
-        where: {
-          userId: routine.userId,
-          routine: { id: routine.id },
-          logDate: Between(startOfDay, endOfDay),
-          isVerified: true,
-        },
-        relations: ['routine'],
-      });
-      return !!log;
-    }
-
-    if (freq === 'weekly') {
-      const [sy, sm, sd] = routine.startDate.split('-').map(Number);
-      const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-      const diffTime = now.getTime() - start.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      const currentCycleIndex = diffDays >= 0 ? Math.floor(diffDays / 7) : 0;
-
-      const cycleStart = new Date(start.getTime() + currentCycleIndex * 7 * 24 * 60 * 60 * 1000);
-      cycleStart.setHours(0, 0, 0, 0);
-      const cycleEnd = new Date(cycleStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
-
-      const log = await this.logRepo.findOne({
-        where: {
-          userId: routine.userId,
-          routine: { id: routine.id },
-          logDate: Between(cycleStart, cycleEnd),
-          isVerified: true,
-        },
-        relations: ['routine'],
-      });
-      return !!log;
-    }
-
-    return false;
+    return !!(await (repo as any).findOne({ where }));
   }
 
   async createAndPush(opts: {
@@ -400,12 +301,6 @@ export class NotificationsService {
 
     // Rate-limit check removed to support "Infinite Poke" functionality as requested.
 
-    // Send the poke notification + push notification.
-    // createAndPush() persists the notification in the DB and sends a real push
-    // notification via the Expo Push API (https://exp.host/--/api/v2/push/send).
-    // Push notifications require a valid Expo push token (fcmToken) on the target user,
-    // which is only available in production/standalone builds — they will NOT work
-    // in Expo Go during development.
     const fromUser = await this.userRepo.findOne({ where: { id: fromUserId } });
     const senderName = fromUser?.name ?? 'Someone';
 
@@ -478,7 +373,9 @@ export class NotificationsService {
       .execute();
 
     const deletedCount = result.affected ?? 0;
-    this.logger.log(`Cleanup: Deleted ${deletedCount} notifications older than ${thirtyDaysAgo.toISOString()}`);
+    this.logger.log(
+      `Cleanup: Deleted ${deletedCount} notifications older than ${thirtyDaysAgo.toISOString()}`,
+    );
     return deletedCount;
   }
 }

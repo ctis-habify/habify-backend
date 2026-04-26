@@ -32,7 +32,6 @@ import { CollaborativeScoreModule } from 'src/collaborative-score/collaborative-
 import { DueReminder } from './due-reminders.entity';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
-
 @Module({
   imports: [
     forwardRef(() => AuthModule),
