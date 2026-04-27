@@ -34,6 +34,8 @@ interface TransformersModule {
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
+import { TranslationService } from './translation.service';
+
 @Injectable()
 export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
@@ -43,7 +45,7 @@ export class AiService implements OnModuleInit {
   private tensorClass: typeof Tensor | null = null;
   private readonly threshold: number;
 
-  constructor() {
+  constructor(private readonly translationService: TranslationService) {
     this.threshold = Number(process.env.VERIFY_THRESHOLD ?? 0.25);
   }
 
@@ -85,10 +87,13 @@ export class AiService implements OnModuleInit {
       this.logger.log(`Starting AI verification for image: ${payload.imageUrl}`);
       await this.ensureModelsLoaded();
 
+      // Translate Turkish routine name to English for better CLIP accuracy
+      const prompt = await this.translationService.translate(payload.text);
+
       const imgBuf = await this.downloadImageBuffer(payload.imageUrl);
       const imageInputs = await this.preprocessToPixelValuesFromBuffer(imgBuf);
 
-      const textInputs = await this.tokenizer!([payload.text], {
+      const textInputs = await this.tokenizer!([prompt], {
         padding: true,
         truncation: true,
         returnTensors: 'pt',

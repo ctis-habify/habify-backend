@@ -110,7 +110,7 @@ export class UsersService {
       totalXp: user.totalXp,
       dailyStreak: user.dailyStreak,
       friends: await this.getFriendList(userId),
-    } as any;
+    };
   }
 
   async getFriendProfile(userId: string): Promise<FriendProfileResponseDto> {
@@ -131,7 +131,7 @@ export class UsersService {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       friends: await this.getFriendList(userId),
-    } as any;
+    };
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<ProfileResponseDto> {

@@ -351,7 +351,7 @@ export class RoutinesController {
     @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: UpdateRoutineDto,
-  ): Promise<any> {
+  ): Promise<Routine | CollaborativeRoutine> {
     const userId = this.getUserId(req);
     return this.routinesService.updateRoutine(userId, id, dto);
   }
