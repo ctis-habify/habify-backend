@@ -27,6 +27,7 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AuditLogType } from '../audit-logs/audit-log.entity';
 import { randomBytes } from 'crypto';
 import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
+import { RoutineResponseDto } from '../common/dto/routines/routine-response.dto';
 import { UpdateRoutineDto } from '../common/dto/routines/update-routine.dto';
 
 @Injectable()
@@ -347,8 +348,11 @@ export class RoutinesService {
 
     if (isStreakBroken(frequencyType, startDate, lastDone, todayStr) && entity.streak > 0) {
       entity.streak = 0;
-      const repo = isRoutine ? this.routineRepo : this.memberRepo;
-      await (repo as any).save(entity);
+      if (isRoutine) {
+        await this.routineRepo.save(entity as Routine);
+      } else {
+        await this.memberRepo.save(entity as RoutineMember);
+      }
     }
 
     return entity.streak;
@@ -593,7 +597,7 @@ export class RoutinesService {
       }),
     ]);
 
-    const routines: any[] = [];
+    const routines: RoutineResponseDto[] = [];
 
     for (const routine of personalRoutines) {
       const { remainingMinutes } = this.getRoutineTiming(routine.endTime);

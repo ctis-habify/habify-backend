@@ -185,7 +185,7 @@ export class NotificationsService {
       end = new Date(start.getTime() + 7 * 86400000 - 1);
     } else return false;
 
-    const where: any = {
+    const where: Record<string, unknown> = {
       userId,
       routine: { id: routine.id },
       logDate: Between(start, end),
@@ -193,7 +193,10 @@ export class NotificationsService {
     };
     if (!isCollab) where.userId = (routine as Routine).userId;
 
-    return !!(await (repo as any).findOne({ where }));
+    const found = await (repo as Repository<RoutineLog | CollaborativeRoutineLog>).findOne({
+      where,
+    });
+    return !!found;
   }
 
   async createAndPush(opts: {
