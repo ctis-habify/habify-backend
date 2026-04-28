@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { CollaborativeScore } from './collaborative-score.entity';
 import { CollaborativeRoutineMember } from '../routines/routine-members.entity';
 import { User } from '../users/users.entity';
+import { XpLog } from '../xp-logs/xp-logs.entity';
 import { LeaderboardEntryDto } from '../common/dto/collaborative-score/leaderboard-entry.dto';
 import { UserCupDto } from '../common/dto/collaborative-score/user-cup.dto';
 import { CollaborativeRoutineLog } from '../routines/collaborative-routine-logs.entity';
@@ -30,13 +31,10 @@ export class CollaborativeScoreService {
     private readonly memberRepository: Repository<CollaborativeRoutineMember>,
     @InjectRepository(CollaborativeRoutineLog)
     private readonly collaborativeRoutineLogRepository: Repository<CollaborativeRoutineLog>,
+    @InjectRepository(XpLog)
+    private readonly xpLogRepository: Repository<XpLog>,
   ) {}
 
-  /**
-   * Returns the collaborative score summary for a user.
-   * total_points: accumulated collaborative points
-   * current_streak: max streak across all collaborative routine memberships
-   */
   async getScoreSummary(userId: string): Promise<ScoreSummaryDto> {
     const score = await this.findOrCreateScore(userId);
 
@@ -59,9 +57,6 @@ export class CollaborativeScoreService {
     return summary;
   }
 
-  /**
-   * Returns the global leaderboard, ranking users by their total collaborative points.
-   */
   async getLeaderboard(limit: number = 50): Promise<LeaderboardEntryDto[]> {
     const rows = await this.scoreRepository
       .createQueryBuilder('score')
@@ -95,12 +90,32 @@ export class CollaborativeScoreService {
     });
   }
 
-  async addPoints(userId: string, amount: number): Promise<CollaborativeScore> {
+  async syncUserScore(userId: string): Promise<CollaborativeScore> {
+    const collaborativeTypes = [
+      'COLLABORATIVE',
+      'COLLAB_ROUTINE_MISSED',
+      'COLLAB_GROUP_DEFEATED',
+      'COLLABORATIVE_STREAK_BONUS',
+      'ROUTINE_WINNER',
+    ];
+
+    const result = await this.xpLogRepository
+      .createQueryBuilder('log')
+      .select('SUM(log.amount)', 'total')
+      .where('log.user_id = :userId', { userId })
+      .andWhere('log.event_type IN (:...types)', { types: collaborativeTypes })
+      .getRawOne();
+
+    const sum = parseInt(result?.total, 10) || 0;
+    const finalScore = Math.max(0, sum);
+
     const score = await this.findOrCreateScore(userId);
-    score.totalPoints += amount;
+    score.totalPoints = finalScore;
+
     this.logger.log(
-      `Adding ${amount} collaborative points to user ${userId}. New total: ${score.totalPoints}`,
+      `Synced collaborative score for user ${userId} from xp_logs. New total: ${score.totalPoints}`,
     );
+
     return this.scoreRepository.save(score);
   }
 

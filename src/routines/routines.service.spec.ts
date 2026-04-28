@@ -60,7 +60,7 @@ describe('RoutinesService (Unit)', () => {
   };
 
   const mockCollabScoreService = {
-    addPoints: jest.fn(),
+    syncUserScore: jest.fn(),
   };
 
   const mockAuditLogsService = {

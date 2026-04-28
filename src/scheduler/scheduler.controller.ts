@@ -1,8 +1,8 @@
-import { Controller, Post, Get, Sse, MessageEvent } from '@nestjs/common';
+import { Controller, Post, Sse, MessageEvent } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SchedulerService } from './scheduler.service';
 import { Observable, map } from 'rxjs';
-import { PersonalRoutine } from '../routines/routines.entity';
+
 
 @ApiTags('scheduler')
 @Controller('scheduler')

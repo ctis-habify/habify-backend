@@ -405,7 +405,7 @@ export class RoutinesService {
     targetId: string,
   ): Promise<{ message: string }> {
     const routine = await this.getCollaborativeRoutineById(routineId);
-    if (!routine) throw new NotFoundException('PersonalRoutine not found');
+    if (!routine) throw new NotFoundException('Group not found');
 
     const members = await this.memberRepo.find({
       where: { collaborativeRoutineId: routineId },
@@ -443,7 +443,7 @@ export class RoutinesService {
       where: { id: routineId },
       relations: ['members'],
     });
-    if (!routine) throw new NotFoundException('PersonalRoutine not found');
+    if (!routine) throw new NotFoundException('Group not found');
 
     const others = routine.members.filter((m) => m.role !== 'creator');
     if (others.length === 0) {
@@ -498,7 +498,7 @@ export class RoutinesService {
       if (dto.endTime) collab.endTime = dto.endTime;
       return this.collaborativeRoutineRepo.save(collab);
     }
-    throw new NotFoundException('PersonalRoutine not found');
+    throw new NotFoundException('Routine not found');
   }
 
   async deleteRoutine(userId: string, routineId: string): Promise<{ message: string }> {
@@ -523,7 +523,7 @@ export class RoutinesService {
       });
       return { message: 'Deleted' };
     }
-    throw new NotFoundException('PersonalRoutine not found');
+    throw new NotFoundException('Routine not found');
   }
 
   async getAllRoutinesByList(

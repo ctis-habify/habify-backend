@@ -247,7 +247,10 @@ export class NotificationsService {
     data?: Record<string, string | number | boolean | null>,
   ): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user?.fcmToken) return;
+    if (!user?.fcmToken) {
+      this.logger.log(`Skipping push notification for user ${userId}: No fcmToken found`);
+      return;
+    }
 
     try {
       await axios.post('https://exp.host/--/api/v2/push/send', {

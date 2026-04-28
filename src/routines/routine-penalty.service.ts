@@ -9,6 +9,7 @@ import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { User } from '../users/users.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { isMissed } from './routine-cycle.util';
+import { CollaborativeScoreService } from '../collaborative-score/collaborative-score.service';
 
 @Injectable()
 export class RoutinePenaltyService {
@@ -27,6 +28,7 @@ export class RoutinePenaltyService {
     private readonly userRepo: Repository<User>,
     private readonly xpLogsService: XpLogsService,
     private readonly notificationsService: NotificationsService,
+    private readonly collaborativeScoreService: CollaborativeScoreService,
   ) {}
 
   async checkAndApplyPenalties(): Promise<void> {
@@ -36,10 +38,7 @@ export class RoutinePenaltyService {
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    // 1. Process Personal Routines
     await this.processPersonalPenalties(yesterdayStr);
-
-    // 2. Process Collaborative Routines
     await this.processCollaborativePenalties(yesterdayStr);
 
     this.logger.log('Personal PersonalRoutine penalty check completed.');
@@ -68,13 +67,10 @@ export class RoutinePenaltyService {
 
       if (!missed) continue;
 
-      // For weekly routines, only penalise on the last day of the missed cycle
-      // (i.e. every 7th day from startDate). This prevents 7 penalties per week.
       if (freq === 'weekly') {
         const start = new Date(routine.startDate + 'T00:00:00Z');
         const check = new Date(yesterdayStr + 'T00:00:00Z');
         const diffDays = Math.floor((check.getTime() - start.getTime()) / 86_400_000);
-        // Only fire on the last day of the week (index 6 of each 7-day cycle)
         if (diffDays % 7 !== 6) continue;
       }
 
@@ -113,23 +109,17 @@ export class RoutinePenaltyService {
     for (const routine of collabRoutines) {
       const freq = routine.frequencyType.toLowerCase();
       if (freq !== 'daily' && freq !== 'weekly') continue;
-
-      // For weekly routines, only run the check on the last day of each 7-day cycle
-      // to avoid firing 7 times per missed week.
       if (freq === 'weekly') {
         const start = new Date(routine.startDate + 'T00:00:00Z');
         const check = new Date(yesterdayStr + 'T00:00:00Z');
         const diffDays = Math.floor((check.getTime() - start.getTime()) / 86_400_000);
         if (diffDays % 7 !== 6) continue;
       }
-
-      // Skip groups that are already defeated — no further life/XP penalties
       const isDefeated = routine.lives === 0;
 
       let anyMemberMissed = false;
 
       for (const member of routine.members) {
-        // Determine the join date as a YYYY-MM-DD string (use UTC date to be safe)
         const joinedAtStr = member.joinedAt
           ? new Date(member.joinedAt).toISOString().split('T')[0]
           : routine.startDate;
@@ -151,6 +141,7 @@ export class RoutinePenaltyService {
             `User ${member.userId} missed collab routine ${routine.id} (${freq}). Deducting XP.`,
           );
           await this.xpLogsService.deductXP(member.userId, 10, 'COLLAB_ROUTINE_MISSED');
+          await this.collaborativeScoreService.syncUserScore(member.userId);
 
           await this.notificationsService.createAndPush({
             userId: member.userId,
@@ -175,6 +166,7 @@ export class RoutinePenaltyService {
 
           for (const member of routine.members) {
             await this.xpLogsService.deductXP(member.userId, 20, 'COLLAB_GROUP_DEFEATED');
+            await this.collaborativeScoreService.syncUserScore(member.userId);
 
             await this.notificationsService.createAndPush({
               userId: member.userId,
@@ -186,8 +178,6 @@ export class RoutinePenaltyService {
           }
 
           await this.collabRoutineRepo.save(routine);
-
-          // Handle creator defeat: remove creator or delete routine
           await this.applyCreatorDefeat(routine);
         } else {
           await this.collabRoutineRepo.save(routine);
@@ -196,13 +186,7 @@ export class RoutinePenaltyService {
     }
   }
 
-  /**
-   * Handles the creator's fate when a collaborative routine is defeated.
-   * - Sole member  → routine is deleted entirely.
-   * - Other members exist → creator is removed and a random member is promoted.
-   */
   private async applyCreatorDefeat(routine: CollaborativeRoutine): Promise<void> {
-    // Re-fetch members to get the latest list
     const members = await this.memberRepo.find({
       where: { collaborativeRoutineId: routine.id },
     });

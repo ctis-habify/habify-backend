@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CollaborativeChatMessage } from './collaborative-chat-message.entity';
@@ -10,6 +10,8 @@ import {
 
 @Injectable()
 export class CollaborativeChatService {
+  private readonly logger = new Logger(CollaborativeChatService.name);
+
   constructor(
     @InjectRepository(CollaborativeChatMessage)
     private readonly chatRepo: Repository<CollaborativeChatMessage>,
@@ -38,7 +40,7 @@ export class CollaborativeChatService {
       throw new BadRequestException('Message is too long');
     }
     const routine = await this.routineRepo.findOne({ where: { id: routineId } });
-    if (!routine) throw new NotFoundException('PersonalRoutine not found');
+    if (!routine) throw new NotFoundException('Collaborative routine not found');
     const chat = this.chatRepo.create({ routineId, userId, message: normalizedMessage });
     return this.chatRepo.save(chat);
   }
@@ -49,7 +51,7 @@ export class CollaborativeChatService {
     message: string,
   ): Promise<CollaborativeChatMessage> {
     const routine = await this.routineRepo.findOne({ where: { id: routineId } });
-    if (!routine) throw new NotFoundException('PersonalRoutine not found');
+    if (!routine) throw new NotFoundException('Collaborative routine not found');
     const chat = this.chatRepo.create({
       routineId,
       userId: actorUserId,

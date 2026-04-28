@@ -170,6 +170,25 @@ export class PersonalRoutineLogsService {
     );
   }
 
+  async listAllLogsForUser(userId: string): Promise<PersonalRoutineLog[]> {
+    const logs = await this.logsRepository.find({
+      where: { userId },
+      relations: ['routine'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return Promise.all(
+      logs.map(async (log) => {
+        if (log.verificationImageUrl && !log.verificationImageUrl.startsWith('http')) {
+          log.verificationImageUrl = await this.gcsService
+            .getSignedReadUrl(log.verificationImageUrl, 3600)
+            .catch(() => log.verificationImageUrl);
+        }
+        return log;
+      }),
+    );
+  }
+
   async getCalendarLogs(
     userId: string,
     routineId: string,

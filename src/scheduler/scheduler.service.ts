@@ -83,7 +83,7 @@ export class SchedulerService {
       const winnerId = top[0].userId;
 
       await this.xpLogsService.awardXP(winnerId, WINNER_BONUS_XP, 'ROUTINE_WINNER');
-      await this.collaborativeScoreService.addPoints(winnerId, WINNER_BONUS_XP);
+      await this.collaborativeScoreService.syncUserScore(winnerId);
 
       await this.notificationsService.createAndPush({
         userId: winnerId,

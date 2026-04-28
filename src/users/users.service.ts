@@ -49,7 +49,7 @@ export class UsersService {
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    return this.usersRepo.findOne({ where: { username } });
+    return this.usersRepo.findOne({ where: { username: ILike(username) } });
   }
 
   async searchUsers(currentUserId: string, query: string): Promise<UserSearchResultDto[]> {

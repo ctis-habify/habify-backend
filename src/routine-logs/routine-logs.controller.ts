@@ -25,6 +25,13 @@ export class PersonalRoutineLogsController {
     );
   }
 
+  @Get()
+  @ApiOkResponse({ type: PersonalRoutineLog, isArray: true })
+  async listAllLogs(@Req() req: Request): Promise<PersonalRoutineLog[]> {
+    const userId = req.user.id;
+    return this.logsService.listAllLogsForUser(userId);
+  }
+
   @Get(':routineId')
   @ApiOkResponse({ type: PersonalRoutineLog, isArray: true })
   async listLogs(
