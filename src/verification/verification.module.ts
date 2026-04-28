@@ -6,8 +6,8 @@ import { VerificationService } from './verification.service';
 import { Verification } from './verification.entity';
 import { AiModule } from 'src/ai/ai.module';
 import { StorageModule } from 'src/storage/storage.module';
-import { RoutineLogsModule } from 'src/routine-logs/routine-logs.module';
-import { Routine } from 'src/routines/routines.entity';
+import { PersonalRoutineLogsModule } from 'src/routine-logs/routine-logs.module';
+import { PersonalRoutine } from 'src/routines/routines.entity';
 import { VerificationProcessor } from 'src/verification/verification.processor';
 import { AuthModule } from 'src/auth/auth.module';
 
@@ -16,8 +16,8 @@ import { AuthModule } from 'src/auth/auth.module';
     AuthModule,
     AiModule,
     StorageModule,
-    RoutineLogsModule,
-    TypeOrmModule.forFeature([Verification, Routine]),
+    PersonalRoutineLogsModule,
+    TypeOrmModule.forFeature([Verification, PersonalRoutine]),
     BullModule.registerQueue({ name: 'verification' }),
   ],
   controllers: [VerificationController],

@@ -1,4 +1,4 @@
-export class RoutineListItemDto {
+export class PersonalRoutineListItemDto {
   id: string;
   routineName: string;
   routineListId: number;

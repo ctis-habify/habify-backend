@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { CollaborativeRoutineLogsService } from './collaborative-routine-logs.service';
 import { CollaborativeRoutineLog } from './collaborative-routine-logs.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { RoutineMember } from './routine-members.entity';
+import { CollaborativeRoutineMember } from './routine-members.entity';
 import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { GcsService } from '../storage/gcs.service';
 import { AiService } from '../ai/ai.service';
@@ -54,7 +54,7 @@ describe('CollaborativeRoutineLogsService (Unit)', () => {
   };
 
   const mockCollabScoreService = {
-    addPoints: jest.fn(),
+    syncUserScore: jest.fn(),
   };
 
   const mockCollabChatService = {
@@ -67,7 +67,7 @@ describe('CollaborativeRoutineLogsService (Unit)', () => {
         CollaborativeRoutineLogsService,
         { provide: getRepositoryToken(CollaborativeRoutineLog), useValue: mockLogsRepo },
         { provide: getRepositoryToken(CollaborativeRoutine), useValue: mockRoutinesRepo },
-        { provide: getRepositoryToken(RoutineMember), useValue: mockMemberRepo },
+        { provide: getRepositoryToken(CollaborativeRoutineMember), useValue: mockMemberRepo },
         { provide: XpLogsService, useValue: mockXpLogsService },
         { provide: GcsService, useValue: mockGcsService },
         { provide: AiService, useValue: mockAiService },
@@ -126,7 +126,7 @@ describe('CollaborativeRoutineLogsService (Unit)', () => {
       const result = await service.verifyLog('user-B', 1, 'approved');
 
       expect(mockLog.approvals).toContain('user-B');
-      expect(mockLog.status).toBe('pending'); // Still pending because 1/2 approvals
+      expect(mockLog.status).toBe('pending'); 
       expect(mockLogsRepo.save).toHaveBeenCalled();
       expect(result.message).toBe('Log approved successfully');
     });
@@ -160,7 +160,7 @@ describe('CollaborativeRoutineLogsService (Unit)', () => {
       expect(mockLog.status).toBe('approved');
       expect(mockLog.isVerified).toBe(true);
       expect(mockXpLogsService.awardXP).toHaveBeenCalledWith('user-A', 20, 'COLLABORATIVE');
-      expect(mockCollabScoreService.addPoints).toHaveBeenCalledWith('user-A', 20);
+      expect(mockCollabScoreService.syncUserScore).toHaveBeenCalledWith('user-A');
       expect(result.isCompletedByGroup).toBe(true);
     });
   });

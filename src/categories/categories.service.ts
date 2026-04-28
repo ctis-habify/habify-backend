@@ -4,15 +4,15 @@ import { Repository } from 'typeorm';
 import { Category } from './categories.entity';
 import { CreateCategoryDto } from '../common/dto/categories/create-category.dto';
 import { UpdateCategoryDto } from '../common/dto/categories/update-category.dto';
-import { RoutineList } from 'src/routine-lists/routine-lists.entity';
+import { PersonalRoutineList } from 'src/routine-lists/routine-lists.entity';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private readonly categoriesRepository: Repository<Category>,
-    @InjectRepository(RoutineList)
-    private readonly routineListRepository: Repository<RoutineList>,
+    @InjectRepository(PersonalRoutineList)
+    private readonly routineListRepository: Repository<PersonalRoutineList>,
   ) {}
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
@@ -48,7 +48,7 @@ export class CategoriesService {
       throw new NotFoundException(`Category with ID ${id} not found`);
     }
 
-    // Check if it's used in any RoutineList
+    // Check if it's used in any PersonalRoutineList
     const listCount = await this.routineListRepository.count({
       where: { categoryId: id },
     });

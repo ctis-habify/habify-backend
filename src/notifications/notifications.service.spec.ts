@@ -3,10 +3,10 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotificationsService } from './notifications.service';
 import { Notification } from './notifications.entity';
 import { User } from '../users/users.entity';
-import { Routine } from '../routines/routines.entity';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
+import { PersonalRoutine } from '../routines/routines.entity';
+import { PersonalRoutineLog } from '../routine-logs/routine-logs.entity';
 import { CollaborativeRoutine } from '../routines/collaborative-routines.entity';
-import { RoutineMember } from '../routines/routine-members.entity';
+import { CollaborativeRoutineMember } from '../routines/routine-members.entity';
 import { CollaborativeRoutineLog } from '../routines/collaborative-routine-logs.entity';
 import { ConfigService } from '@nestjs/config';
 
@@ -38,10 +38,10 @@ describe('NotificationsService (Unit)', () => {
       providers: [
         NotificationsService,
         { provide: getRepositoryToken(Notification), useValue: mockRepo },
-        { provide: getRepositoryToken(Routine), useValue: mockRepo },
-        { provide: getRepositoryToken(RoutineLog), useValue: mockRepo },
+        { provide: getRepositoryToken(PersonalRoutine), useValue: mockRepo },
+        { provide: getRepositoryToken(PersonalRoutineLog), useValue: mockRepo },
         { provide: getRepositoryToken(CollaborativeRoutine), useValue: mockRepo },
-        { provide: getRepositoryToken(RoutineMember), useValue: mockRepo },
+        { provide: getRepositoryToken(CollaborativeRoutineMember), useValue: mockRepo },
         { provide: getRepositoryToken(CollaborativeRoutineLog), useValue: mockRepo },
         { provide: getRepositoryToken(User), useValue: mockRepo },
         { provide: ConfigService, useValue: mockConfigService },

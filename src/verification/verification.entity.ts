@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Routine } from 'src/routines/routines.entity';
+import { PersonalRoutine } from 'src/routines/routines.entity';
 
 export type VerificationStatus = 'pending' | 'processing' | 'succeeded' | 'failed';
 
@@ -16,9 +16,9 @@ export class Verification {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Routine, { onDelete: 'CASCADE' })
+  @ManyToOne(() => PersonalRoutine, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'routine_id' })
-  routine: Routine;
+  routine: PersonalRoutine;
 
   @Column({ name: 'user_id' })
   userId: string;

@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { Routine } from './routines.entity';
+import { PersonalRoutine } from './routines.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
 import { CollaborativeRoutineLog } from './collaborative-routine-logs.entity';
-import { RoutineList } from '../routine-lists/routine-lists.entity';
+import { PersonalRoutineList } from '../routine-lists/routine-lists.entity';
 import { User } from '../users/users.entity';
 import { Category } from '../categories/categories.entity';
-import { RoutineMember } from './routine-members.entity'; // Added this import
+import { CollaborativeRoutineMember } from './routine-members.entity'; // Added this import
 import { CollaborativeChatMessage } from './collaborative-chat-message.entity'; // Added this import
 import { CollaborativeChatService } from './collaborative-chat.service'; // Added this import
 
@@ -19,12 +19,12 @@ import { CollaborativeRoutineLogsService } from './collaborative-routine-logs.se
 import { CollaborativeChatController } from './collaborative-chat.controller';
 import { RoutinePenaltyService } from './routine-penalty.service';
 
-import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
+import { PersonalRoutineLog } from 'src/routine-logs/routine-logs.entity';
 import { AiService } from 'src/ai/ai.service';
 import { AiModule } from 'src/ai/ai.module';
 import { StorageModule } from 'src/storage/storage.module';
 import { XpLogsModule } from 'src/xp-logs/xp-logs.module';
-import { RoutineLogsModule } from 'src/routine-logs/routine-logs.module';
+import { PersonalRoutineLogsModule } from 'src/routine-logs/routine-logs.module';
 import { UsersModule } from 'src/users/users.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { CollaborativeScoreModule } from 'src/collaborative-score/collaborative-score.module';
@@ -38,7 +38,7 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
     AiModule,
     StorageModule,
     XpLogsModule,
-    RoutineLogsModule,
+    PersonalRoutineLogsModule,
     UsersModule,
     NotificationsModule,
     CollaborativeScoreModule,
@@ -46,15 +46,15 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
     // TypeORM repository'ler
     TypeOrmModule.forFeature([
-      Routine,
+      PersonalRoutine,
       CollaborativeRoutine,
       CollaborativeRoutineLog,
-      RoutineLog,
-      RoutineList,
+      PersonalRoutineLog,
+      PersonalRoutineList,
       User,
       Category,
       DueReminder,
-      RoutineMember,
+      CollaborativeRoutineMember,
       CollaborativeChatMessage,
     ]),
   ],

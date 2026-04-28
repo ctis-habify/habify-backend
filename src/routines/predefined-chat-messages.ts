@@ -34,7 +34,7 @@ export const PREDEFINED_CHAT_MESSAGES_CATEGORIZED: PredefinedChatMessageItem[] =
 
   { text: 'Oops, my bed won the battle today! 🛏️', category: 'funny', color: '#e879f9', order: 16 },
   {
-    text: 'Routine? I thought you said “ruin” my plans!',
+    text: 'PersonalRoutine? I thought you said “ruin” my plans!',
     category: 'funny',
     color: '#e879f9',
     order: 17,

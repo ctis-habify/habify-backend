@@ -9,14 +9,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { CollaborativeRoutineLog } from './collaborative-routine-logs.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { RoutineMember } from './routine-members.entity';
+import { CollaborativeRoutineMember } from './routine-members.entity';
 import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { GcsService } from 'src/storage/gcs.service';
-import { AiService } from 'src/ai/ai.service';
 import { UsersService } from 'src/users/users.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { CollaborativeScoreService } from '../collaborative-score/collaborative-score.service';
-import { RoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
+import { CollaborativeRoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
 import { CollaborativeChatService } from './collaborative-chat.service';
 import { shouldIncrementStreak } from './routine-cycle.util';
 
@@ -32,11 +31,10 @@ export class CollaborativeRoutineLogsService {
     private readonly logsRepository: Repository<CollaborativeRoutineLog>,
     @InjectRepository(CollaborativeRoutine)
     private readonly routinesRepository: Repository<CollaborativeRoutine>,
-    @InjectRepository(RoutineMember)
-    private readonly memberRepository: Repository<RoutineMember>,
+    @InjectRepository(CollaborativeRoutineMember)
+    private readonly memberRepository: Repository<CollaborativeRoutineMember>,
     private readonly xpLogsService: XpLogsService,
     private readonly gcsService: GcsService,
-    private readonly aiService: AiService,
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
     private readonly collaborativeScoreService: CollaborativeScoreService,
@@ -161,25 +159,19 @@ export class CollaborativeRoutineLogsService {
 
     if (!membership) throw new ForbiddenException('You are not a member of this routine group');
 
-    // Multi-user voting tracking
     if (status === 'approved') {
       log.approvals = [...alreadyApproved, userId];
     } else {
       log.rejections = [...alreadyRejected, userId];
     }
 
-    // Threshold check:
-    // - pending logs follow current member count (excluding submitter),
-    //   but never below the creation snapshot.
-    // - finalized logs keep their snapshot and are not re-opened.
+
     const currentRequiredApprovals = Math.max(1, (log.routine?.members?.length || 1) - 1);
     const requiredApprovals = Math.max(1, log.requiredApprovals || 1, currentRequiredApprovals);
     const currentApprovals = log.approvals.length;
 
     const isThresholdMet = currentApprovals >= requiredApprovals;
 
-    // We only update the final status and award XP/streak when the threshold is met
-    // OR if someone explicitly rejected.
     const isFirstTimeVerified = isThresholdMet && log.status === 'pending';
     const isFirstTimeRejected = status === 'rejected' && log.status === 'pending';
 
@@ -225,7 +217,7 @@ export class CollaborativeRoutineLogsService {
       const basePoints = log.routine.completionXp || 10;
 
       await this.xpLogsService.awardXP(log.userId, basePoints, 'COLLABORATIVE');
-      await this.collaborativeScoreService.addPoints(log.userId, basePoints);
+      await this.collaborativeScoreService.syncUserScore(log.userId);
 
       if (completionStreak && completionStreak % STREAK_BONUS_STEP === 0) {
         streakBonusPoints = this.getStreakBonusPoints(completionStreak);
@@ -234,7 +226,7 @@ export class CollaborativeRoutineLogsService {
           streakBonusPoints,
           'COLLABORATIVE_STREAK_BONUS',
         );
-        await this.collaborativeScoreService.addPoints(log.userId, streakBonusPoints);
+        await this.collaborativeScoreService.syncUserScore(log.userId);
       }
 
       try {
@@ -252,8 +244,8 @@ export class CollaborativeRoutineLogsService {
             `${submitter?.name || 'A member'} reached a ${completionStreak}-day streak and earned a ${streakBonusPoints}-point bonus.`,
           );
         }
-      } catch {
-        // best-effort system chat message
+      } catch (err) {
+        this.logger.error(`Failed to send system message: ${err}`);
       }
     }
 
@@ -293,9 +285,9 @@ export class CollaborativeRoutineLogsService {
           },
         });
       }
-    } catch {
-      // log error but don't fail the verification
-    }
+    } catch (err) {
+        this.logger.error(`Failed to send notifications: ${err}`);
+      }
 
     const completedUser = isFirstTimeVerified ? await this.usersService.findById(log.userId) : null;
     return {
@@ -395,7 +387,7 @@ export class CollaborativeRoutineLogsService {
     return result;
   }
 
-  async getLeaderboard(routineId: string): Promise<RoutineLeaderboardEntryDto[]> {
+  async getLeaderboard(routineId: string): Promise<CollaborativeRoutineLeaderboardEntryDto[]> {
     const routine = await this.routinesRepository.findOne({
       where: { id: routineId },
       relations: ['members', 'members.user'],
@@ -411,11 +403,11 @@ export class CollaborativeRoutineLogsService {
       routine.members.map((member) => member.userId),
     );
 
-    const leaderboard: RoutineLeaderboardEntryDto[] = routine.members.map((member) => {
+    const leaderboard: CollaborativeRoutineLeaderboardEntryDto[] = routine.members.map((member) => {
       const approvedLogs = logCounts[member.userId] || 0;
       const score = approvedLogs * completionXp;
 
-      const entry = new RoutineLeaderboardEntryDto();
+      const entry = new CollaborativeRoutineLeaderboardEntryDto();
       entry.userId = member.userId;
       entry.name = member.user.name;
       entry.username = member.user.username || null;

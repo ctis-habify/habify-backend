@@ -9,10 +9,10 @@ import {
 } from 'typeorm';
 import { User } from '../users/users.entity';
 import { Category } from '../categories/categories.entity';
-import { Routine } from '../routines/routines.entity';
+import { PersonalRoutine } from '../routines/routines.entity';
 
-@Entity('routin_lists')
-export class RoutineList {
+@Entity('personal_routine_lists')
+export class PersonalRoutineList {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -36,6 +36,6 @@ export class RoutineList {
   @Column({ name: 'category_id' })
   categoryId: number;
 
-  @OneToMany(() => Routine, (routine) => routine.routineList)
-  routines: Routine[];
+  @OneToMany(() => PersonalRoutine, (routine) => routine.routineList)
+  routines: PersonalRoutine[];
 }

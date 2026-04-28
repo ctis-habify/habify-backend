@@ -76,19 +76,19 @@ export class SchedulerService {
       );
 
       if (top.length === 0) {
-        this.logger.log(`Routine ${routine.id} concluded with no approved logs — skipping reward`);
+        this.logger.log(`PersonalRoutine ${routine.id} concluded with no approved logs — skipping reward`);
         continue;
       }
 
       const winnerId = top[0].userId;
 
       await this.xpLogsService.awardXP(winnerId, WINNER_BONUS_XP, 'ROUTINE_WINNER');
-      await this.collaborativeScoreService.addPoints(winnerId, WINNER_BONUS_XP);
+      await this.collaborativeScoreService.syncUserScore(winnerId);
 
       await this.notificationsService.createAndPush({
         userId: winnerId,
         type: 'REWARD',
-        title: '🏆 Routine Winner!',
+        title: '🏆 PersonalRoutine Winner!',
         body: `You ranked 1st in "${routine.routineName}" and earned ${WINNER_BONUS_XP} bonus XP!`,
         collaborativeRoutineId: routine.id,
       });
@@ -102,13 +102,13 @@ export class SchedulerService {
         await this.notificationsService.createAndPush({
           userId: member.userId,
           type: 'ROUTINE_CONCLUDED',
-          title: 'Routine Concluded',
+          title: 'PersonalRoutine Concluded',
           body: `The collaborative routine "${routine.routineName}" has ended. Check the leaderboard for final results!`,
           collaborativeRoutineId: routine.id,
         });
       }
 
-      this.logger.log(`Routine ${routine.id} concluded — winner: ${winnerId}`);
+      this.logger.log(`PersonalRoutine ${routine.id} concluded — winner: ${winnerId}`);
     }
   }
 

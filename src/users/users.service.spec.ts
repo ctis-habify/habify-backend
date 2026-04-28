@@ -3,10 +3,10 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { UsersService } from './users.service';
 import { User } from './users.entity';
 import { FriendRequest } from '../friend-requests/friend-requests.entity';
-import { Routine } from '../routines/routines.entity';
+import { PersonalRoutine } from '../routines/routines.entity';
 import { CollaborativeRoutine } from '../routines/collaborative-routines.entity';
-import { RoutineMember } from '../routines/routine-members.entity';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
+import { CollaborativeRoutineMember } from '../routines/routine-members.entity';
+import { PersonalRoutineLog } from '../routine-logs/routine-logs.entity';
 import { CollaborativeRoutineLog } from '../routines/collaborative-routine-logs.entity';
 import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -46,10 +46,10 @@ describe('UsersService (Unit)', () => {
         UsersService,
         { provide: getRepositoryToken(User), useValue: mockRepo },
         { provide: getRepositoryToken(FriendRequest), useValue: mockRepo },
-        { provide: getRepositoryToken(Routine), useValue: mockRepo },
+        { provide: getRepositoryToken(PersonalRoutine), useValue: mockRepo },
         { provide: getRepositoryToken(CollaborativeRoutine), useValue: mockRepo },
-        { provide: getRepositoryToken(RoutineMember), useValue: mockRepo },
-        { provide: getRepositoryToken(RoutineLog), useValue: mockRepo },
+        { provide: getRepositoryToken(CollaborativeRoutineMember), useValue: mockRepo },
+        { provide: getRepositoryToken(PersonalRoutineLog), useValue: mockRepo },
         { provide: getRepositoryToken(CollaborativeRoutineLog), useValue: mockRepo },
         { provide: XpLogsService, useValue: mockXpLogsService },
         { provide: AuditLogsService, useValue: mockAuditLogsService },

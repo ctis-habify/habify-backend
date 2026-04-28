@@ -114,7 +114,6 @@ export class FriendRequestsService {
     await this.repo.save(request);
   }
 
-  /** Returns users who are friends (accepted request in either direction). */
   async getFriends(userId: string): Promise<UserSearchResultDto[]> {
     const accepted = await this.repo.find({
       where: { status: FriendRequestStatus.accepted },

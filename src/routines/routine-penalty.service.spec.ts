@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { RoutinePenaltyService } from './routine-penalty.service';
-import { Routine } from './routines.entity';
+import { PersonalRoutine } from './routines.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { RoutineMember } from './routine-members.entity';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
+import { CollaborativeRoutineMember } from './routine-members.entity';
+import { PersonalRoutineLog } from '../routine-logs/routine-logs.entity';
 import { User } from '../users/users.entity';
 import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -32,10 +32,10 @@ describe('RoutinePenaltyService (Unit)', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RoutinePenaltyService,
-        { provide: getRepositoryToken(Routine), useValue: mockRepo },
+        { provide: getRepositoryToken(PersonalRoutine), useValue: mockRepo },
         { provide: getRepositoryToken(CollaborativeRoutine), useValue: mockRepo },
-        { provide: getRepositoryToken(RoutineMember), useValue: mockRepo },
-        { provide: getRepositoryToken(RoutineLog), useValue: mockRepo },
+        { provide: getRepositoryToken(CollaborativeRoutineMember), useValue: mockRepo },
+        { provide: getRepositoryToken(PersonalRoutineLog), useValue: mockRepo },
         { provide: getRepositoryToken(User), useValue: mockRepo },
         { provide: XpLogsService, useValue: mockXpLogsService },
         { provide: NotificationsService, useValue: mockNotificationsService },

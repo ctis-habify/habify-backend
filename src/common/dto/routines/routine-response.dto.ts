@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class RoutineResponseDto {
+export class PersonalRoutineResponseDto {
   @ApiProperty({ example: 'uuid-1234' })
   id: string;
 

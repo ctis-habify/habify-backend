@@ -36,7 +36,7 @@ describe('SchedulerService (Unit)', () => {
   };
 
   const mockCollabScoreService = {
-    addPoints: jest.fn(),
+    syncUserScore: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -58,8 +58,8 @@ describe('SchedulerService (Unit)', () => {
 
   it('should identify winners and award points', async () => {
     mockDataSource.query.mockResolvedValueOnce([{ id: 'r-1', routineName: 'G1' }]); // routines
-    mockDataSource.query.mockResolvedValueOnce([{ userId: 'u-1' }]); // winners
-    mockDataSource.query.mockResolvedValueOnce([{ userId: 'u-2' }]); // others
+    mockDataSource.query.mockResolvedValueOnce([{ userId: 'u-1' }]); 
+    mockDataSource.query.mockResolvedValueOnce([{ userId: 'u-2' }]); 
     mockCollabLogsService.getApprovedLogCountMapByRoutine.mockResolvedValue({ ['u-1']: 5 });
 
     await service.checkAndRewardConcludedRoutines();

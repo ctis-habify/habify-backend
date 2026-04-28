@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class RoutineInvitationResponseDto {
+export class CollaborativeRoutineInvitationResponseDto {
   @ApiProperty()
   id: string;
 

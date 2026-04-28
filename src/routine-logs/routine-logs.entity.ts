@@ -6,10 +6,10 @@ import {
   JoinColumn,
   CreateDateColumn,
 } from 'typeorm';
-import { Routine } from '../routines/routines.entity';
+import { PersonalRoutine } from '../routines/routines.entity';
 
-@Entity('routine_logs')
-export class RoutineLog {
+@Entity('personal_routine_logs')
+export class PersonalRoutineLog {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -22,9 +22,9 @@ export class RoutineLog {
   @Column({ name: 'verification_image_url', nullable: true })
   verificationImageUrl: string;
 
-  @ManyToOne(() => Routine, { onDelete: 'CASCADE' })
+  @ManyToOne(() => PersonalRoutine, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'routine_id' })
-  routine: Routine;
+  routine: PersonalRoutine;
 
   @Column({ name: 'user_id' })
   userId: string;

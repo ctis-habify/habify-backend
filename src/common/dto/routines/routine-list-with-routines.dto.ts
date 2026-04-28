@@ -1,12 +1,11 @@
-// routine-list-with-routines.dto.ts
-import { RoutineListItemDto } from './routine-list-item.dto';
+import { PersonalRoutineListItemDto } from './routine-list-item.dto';
 
-export class RoutineListWithRoutinesDto {
+export class PersonalRoutineListWithRoutinesDto {
   routineListId: number;
   routineListTitle: string;
 
   categoryId: number;
   categoryName: string | null;
 
-  routines: RoutineListItemDto[];
+  routines: PersonalRoutineListItemDto[];
 }

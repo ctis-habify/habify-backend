@@ -7,46 +7,46 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, type Repository } from 'typeorm';
-import type { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
-import { Routine } from './routines.entity';
+import type { CreatePersonalRoutineDto } from '../common/dto/routines/create-routines.dto';
+import { PersonalRoutine  } from './routines.entity';
 import { isStreakBroken, isCompletedInCurrentCycle } from './routine-cycle.util';
 import { Category } from 'src/categories/categories.entity';
 import { CreateCollaborativeRoutineDto } from 'src/common/dto/routines/create-collaborative-routine.dto';
 import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
-import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
+import { PersonalRoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
 import { PublicCollaborativeRoutineResponseDto } from 'src/common/dto/routines/public-collaborative-routine-response.dto';
 import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
-import { RoutineList } from 'src/routine-lists/routine-lists.entity';
+import { PersonalRoutineList } from 'src/routine-lists/routine-lists.entity';
 import { Gender, User } from 'src/users/users.entity';
 import { UsersService } from 'src/users/users.service';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { RoutineMember } from './routine-members.entity';
+import { CollaborativeRoutineMember } from './routine-members.entity';
 import { CollaborativeScoreService } from 'src/collaborative-score/collaborative-score.service';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
+import { PersonalRoutineLog } from '../routine-logs/routine-logs.entity';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AuditLogType } from '../audit-logs/audit-log.entity';
 import { randomBytes } from 'crypto';
 import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
-import { RoutineResponseDto } from '../common/dto/routines/routine-response.dto';
-import { UpdateRoutineDto } from '../common/dto/routines/update-routine.dto';
+import { PersonalRoutineResponseDto } from '../common/dto/routines/routine-response.dto';
+import { UpdatePersonalRoutineDto } from '../common/dto/routines/update-routine.dto';
 
 @Injectable()
 export class RoutinesService {
   private readonly logger = new Logger(RoutinesService.name);
 
   constructor(
-    @InjectRepository(RoutineList)
-    private readonly routineListRepo: Repository<RoutineList>,
+    @InjectRepository(PersonalRoutineList)
+    private readonly routineListRepo: Repository<PersonalRoutineList>,
 
-    @InjectRepository(RoutineLog)
-    private readonly logRepo: Repository<RoutineLog>,
+    @InjectRepository(PersonalRoutineLog)
+    private readonly logRepo: Repository<PersonalRoutineLog>,
 
-    @InjectRepository(Routine)
-    private routineRepo: Repository<Routine>,
+    @InjectRepository(PersonalRoutine)
+    private routineRepo: Repository<PersonalRoutine>,
     @InjectRepository(CollaborativeRoutine)
     private collaborativeRoutineRepo: Repository<CollaborativeRoutine>,
-    @InjectRepository(RoutineMember)
-    private memberRepo: Repository<RoutineMember>,
+    @InjectRepository(CollaborativeRoutineMember)
+    private memberRepo: Repository<CollaborativeRoutineMember>,
 
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
@@ -59,14 +59,14 @@ export class RoutinesService {
     private readonly auditLogsService: AuditLogsService,
   ) {}
 
-  async getUserRoutines(userId: string): Promise<Routine[]> {
+  async getUserPersonalRoutines(userId: string): Promise<PersonalRoutine[]> {
     return this.routineRepo.find({
       where: { userId: userId },
       order: { startTime: 'ASC' },
     });
   }
 
-  async getRoutineById(userId: string, routineId: string): Promise<Routine | null> {
+  async getPersonalRoutineById(userId: string, routineId: string): Promise<PersonalRoutine | null> {
     return this.routineRepo.findOne({
       where: { userId: userId, id: routineId },
     });
@@ -99,7 +99,7 @@ export class RoutinesService {
     return list.id;
   }
 
-  async createRoutine(data: CreateRoutineDto & { userId: string }): Promise<Routine> {
+  async createPersonalRoutine(data: CreatePersonalRoutineDto & { userId: string }): Promise<PersonalRoutine> {
     const listId = data.routineListId ?? (await this.getOrCreateDefaultList(data.userId));
 
     const routine = this.routineRepo.create({
@@ -150,7 +150,6 @@ export class RoutinesService {
 
     const saved = await this.collaborativeRoutineRepo.save(routine);
 
-    // Initial membership for the creator
     const creatorMember = this.memberRepo.create({
       collaborativeRoutineId: saved.id,
       userId: data.userId,
@@ -209,7 +208,6 @@ export class RoutinesService {
     if (age) qb.andWhere('routine.ageRequirement <= :age', { age });
     if (xp) qb.andWhere('routine.xpRequirement <= :xp', { xp });
     if (memberId) {
-      // Filter to routines where the target user is a member (via routine_members join table)
       qb.innerJoin('routine.members', 'targetMember', 'targetMember.userId = :memberId', {
         memberId,
       });
@@ -289,7 +287,6 @@ export class RoutinesService {
       }
     }
 
-    // XP requirement check
     if (routine.xpRequirement && routine.xpRequirement > 0) {
       if (user.totalXp < routine.xpRequirement) {
         throw new BadRequestException(
@@ -321,7 +318,7 @@ export class RoutinesService {
   }
 
   private async syncStreak(
-    entity: Routine | RoutineMember,
+    entity: PersonalRoutine | CollaborativeRoutineMember,
     todayStrOverride?: string,
   ): Promise<number> {
     const todayStr = todayStrOverride || new Date().toISOString().split('T')[0];
@@ -329,14 +326,14 @@ export class RoutinesService {
 
     const isRoutine = 'routineName' in entity;
     const frequencyType = isRoutine
-      ? (entity as Routine).frequencyType
-      : ((entity as RoutineMember).routine?.frequencyType ?? 'daily');
+      ? (entity as PersonalRoutine).frequencyType
+      : ((entity as CollaborativeRoutineMember).routine?.frequencyType ?? 'daily');
     const startDate = isRoutine
-      ? (entity as Routine).startDate
-      : ((entity as RoutineMember).routine?.startDate ?? todayStr);
+      ? (entity as PersonalRoutine).startDate
+      : ((entity as CollaborativeRoutineMember).routine?.startDate ?? todayStr);
 
     if (isRoutine) {
-      const routine = entity as Routine;
+      const routine = entity as PersonalRoutine;
       const completedNow = isCompletedInCurrentCycle(frequencyType, startDate, lastDone, todayStr);
       if (routine.isAiVerified && !completedNow) {
         routine.isAiVerified = false;
@@ -349,9 +346,9 @@ export class RoutinesService {
     if (isStreakBroken(frequencyType, startDate, lastDone, todayStr) && entity.streak > 0) {
       entity.streak = 0;
       if (isRoutine) {
-        await this.routineRepo.save(entity as Routine);
+        await this.routineRepo.save(entity as PersonalRoutine);
       } else {
-        await this.memberRepo.save(entity as RoutineMember);
+        await this.memberRepo.save(entity as CollaborativeRoutineMember);
       }
     }
 
@@ -408,7 +405,7 @@ export class RoutinesService {
     targetId: string,
   ): Promise<{ message: string }> {
     const routine = await this.getCollaborativeRoutineById(routineId);
-    if (!routine) throw new NotFoundException('Routine not found');
+    if (!routine) throw new NotFoundException('Group not found');
 
     const members = await this.memberRepo.find({
       where: { collaborativeRoutineId: routineId },
@@ -433,7 +430,7 @@ export class RoutinesService {
         ]);
       } else {
         await this.collaborativeRoutineRepo.remove(routine);
-        return { message: 'Routine deleted' };
+        return { message: 'CollaborativeRoutine deleted' };
       }
     }
 
@@ -446,12 +443,12 @@ export class RoutinesService {
       where: { id: routineId },
       relations: ['members'],
     });
-    if (!routine) throw new NotFoundException('Routine not found');
+    if (!routine) throw new NotFoundException('Group not found');
 
     const others = routine.members.filter((m) => m.role !== 'creator');
     if (others.length === 0) {
       await this.collaborativeRoutineRepo.delete(routineId);
-      return { message: 'Routine deleted' };
+      return { message: 'CollaborativeRoutine deleted' };
     }
 
     const creator = routine.members.find((m) => m.role === 'creator');
@@ -471,8 +468,8 @@ export class RoutinesService {
   async updateRoutine(
     userId: string,
     routineId: string,
-    dto: UpdateRoutineDto,
-  ): Promise<Routine | CollaborativeRoutine> {
+    dto: UpdatePersonalRoutineDto,
+  ): Promise<PersonalRoutine | CollaborativeRoutine> {
     const personal = await this.routineRepo.findOne({ where: { id: routineId, userId } });
     if (personal) {
       const oldFreq = personal.frequencyType?.toLowerCase();
@@ -532,7 +529,7 @@ export class RoutinesService {
   async getAllRoutinesByList(
     userId: string,
     todayStr?: string,
-  ): Promise<RoutineListWithRoutinesDto[]> {
+  ): Promise<PersonalRoutineListWithRoutinesDto[]> {
     const today = todayStr || new Date().toISOString().split('T')[0];
     const lists = await this.routineListRepo.find({
       where: { userId },
@@ -597,7 +594,7 @@ export class RoutinesService {
       }),
     ]);
 
-    const routines: RoutineResponseDto[] = [];
+    const routines: PersonalRoutineResponseDto[] = [];
 
     for (const routine of personalRoutines) {
       const { remainingMinutes } = this.getRoutineTiming(routine.endTime);
@@ -665,25 +662,23 @@ export class RoutinesService {
   }
 
   async viewCollaborativeRoutines(userId: string): Promise<CollaborativeRoutineViewDto[]> {
-    // Find all collaborative routines where user is a member
     const memberships = await this.memberRepo.find({
       where: { userId },
       relations: ['routine', 'routine.category', 'routine.members', 'routine.members.user'],
     });
 
     const enrolledUserIds = memberships.flatMap((membership) =>
-      membership.routine.members.map((member) => member.userId),
+      membership.routine.members.map((member: CollaborativeRoutineMember) => member.userId),
     );
     const cupsByUserId = await this.collaborativeScoreService.getCupMapForUsers(enrolledUserIds);
 
-    // Map to routine cards with required info
     return memberships.map((m) => {
       const routine = m.routine as CollaborativeRoutine;
       return {
         id: routine.id,
         name: routine.routineName,
         description: routine.description,
-        enrolledUsers: routine.members.map((member) => ({
+        enrolledUsers: routine.members.map((member: CollaborativeRoutineMember) => ({
           userId: member.user.id,
           username: member.user.name,
           avatarUrl: member.user.avatarUrl,

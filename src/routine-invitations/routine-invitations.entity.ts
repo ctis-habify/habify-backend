@@ -9,14 +9,14 @@ import {
 import { User } from '../users/users.entity';
 import { CollaborativeRoutine } from '../routines/collaborative-routines.entity';
 
-export enum RoutineInvitationStatus {
+export enum CollaborativeRoutineInvitationStatus {
   pending = 'pending',
   accepted = 'accepted',
   declined = 'declined',
 }
 
 @Entity('routine_invitations')
-export class RoutineInvitation {
+export class CollaborativeRoutineInvitation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -43,10 +43,10 @@ export class RoutineInvitation {
 
   @Column({
     type: 'enum',
-    enum: RoutineInvitationStatus,
-    default: RoutineInvitationStatus.pending,
+    enum: CollaborativeRoutineInvitationStatus,
+    default: CollaborativeRoutineInvitationStatus.pending,
   })
-  status: RoutineInvitationStatus;
+  status: CollaborativeRoutineInvitationStatus;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
