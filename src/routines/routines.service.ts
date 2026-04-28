@@ -6,29 +6,29 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, type Repository } from 'typeorm';
-import type { CreatePersonalRoutineDto } from '../common/dto/routines/create-routines.dto';
-import { PersonalRoutine  } from './routines.entity';
-import { isStreakBroken, isCompletedInCurrentCycle } from './routine-cycle.util';
+import { randomBytes } from 'crypto';
 import { Category } from 'src/categories/categories.entity';
+import { CollaborativeScoreService } from 'src/collaborative-score/collaborative-score.service';
 import { CreateCollaborativeRoutineDto } from 'src/common/dto/routines/create-collaborative-routine.dto';
 import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
-import { PersonalRoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
 import { PublicCollaborativeRoutineResponseDto } from 'src/common/dto/routines/public-collaborative-routine-response.dto';
+import { PersonalRoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
 import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
 import { PersonalRoutineList } from 'src/routine-lists/routine-lists.entity';
 import { Gender, User } from 'src/users/users.entity';
 import { UsersService } from 'src/users/users.service';
-import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { CollaborativeRoutineMember } from './routine-members.entity';
-import { CollaborativeScoreService } from 'src/collaborative-score/collaborative-score.service';
-import { PersonalRoutineLog } from '../routine-logs/routine-logs.entity';
-import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { LessThanOrEqual, type Repository } from 'typeorm';
 import { AuditLogType } from '../audit-logs/audit-log.entity';
-import { randomBytes } from 'crypto';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
+import type { CreatePersonalRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { PersonalRoutineResponseDto } from '../common/dto/routines/routine-response.dto';
 import { UpdatePersonalRoutineDto } from '../common/dto/routines/update-routine.dto';
+import { PersonalRoutineLog } from '../routine-logs/routine-logs.entity';
+import { CollaborativeRoutine } from './collaborative-routines.entity';
+import { isCompletedInCurrentCycle, isStreakBroken } from './routine-cycle.util';
+import { CollaborativeRoutineMember } from './routine-members.entity';
+import { PersonalRoutine } from './routines.entity';
 
 @Injectable()
 export class RoutinesService {
@@ -99,7 +99,9 @@ export class RoutinesService {
     return list.id;
   }
 
-  async createPersonalRoutine(data: CreatePersonalRoutineDto & { userId: string }): Promise<PersonalRoutine> {
+  async createPersonalRoutine(
+    data: CreatePersonalRoutineDto & { userId: string },
+  ): Promise<PersonalRoutine> {
     const listId = data.routineListId ?? (await this.getOrCreateDefaultList(data.userId));
 
     const routine = this.routineRepo.create({
@@ -139,7 +141,7 @@ export class RoutinesService {
       categoryId: data.categoryId,
       description: data.description,
       lives: data.lives,
-      isPublic: data.isPublic,
+      isPublic: data.isPublic ?? true,
       rewardCondition: data.rewardCondition,
       ageRequirement: data.ageRequirement,
       genderRequirement: data.genderRequirement,
@@ -386,6 +388,7 @@ export class RoutinesService {
       },
       inviteKey: routine.collaborativeKey,
       memberCount: routine.members.length,
+      isPublic: routine.isPublic,
       participants: routine.members.map((m) => ({
         userId: m.user.id,
         username: m.user.name,
