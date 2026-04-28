@@ -63,6 +63,9 @@ export class GroupDetailResponseDto {
   @ApiProperty()
   memberCount: number;
 
+  @ApiProperty()
+  isPublic: boolean;
+
   @ApiProperty({ type: [ParticipantDto] })
   participants: ParticipantDto[];
 }

@@ -49,7 +49,7 @@ export class CollaborativeRoutine {
   @Column({ type: 'int', default: 0 })
   lives: number;
 
-  @Column({ type: 'boolean', default: false, name: 'is_public' })
+  @Column({ type: 'boolean', default: true, name: 'is_public' })
   isPublic: boolean;
 
   @Column({ type: 'text', nullable: true, name: 'reward_condition' })
