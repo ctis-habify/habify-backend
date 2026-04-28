@@ -36,12 +36,12 @@ export class CollaborativeScoreService {
   ) {}
 
   async getScoreSummary(userId: string): Promise<ScoreSummaryDto> {
-    const score = await this.findOrCreateScore(userId);
+    const score = await this.syncUserScore(userId);
 
     const maxStreakResult = await this.memberRepository
       .createQueryBuilder('member')
       .select('COALESCE(MAX(member.streak), 0)', 'maxStreak')
-      .where('member.user_id = :userId', { userId })
+      .where('member.userId = :userId', { userId })
       .getRawOne();
 
     const currentStreak = parseInt(maxStreakResult?.maxStreak, 10) || 0;
@@ -102,8 +102,8 @@ export class CollaborativeScoreService {
     const result = await this.xpLogRepository
       .createQueryBuilder('log')
       .select('SUM(log.amount)', 'total')
-      .where('log.user_id = :userId', { userId })
-      .andWhere('log.event_type IN (:...types)', { types: collaborativeTypes })
+      .where('log.userId = :userId', { userId })
+      .andWhere('log.eventType IN (:...types)', { types: collaborativeTypes })
       .getRawOne();
 
     const sum = parseInt(result?.total, 10) || 0;
