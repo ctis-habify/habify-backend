@@ -46,7 +46,7 @@ export class AiService implements OnModuleInit {
   private readonly threshold: number;
 
   constructor(private readonly translationService: TranslationService) {
-    this.threshold = Number(process.env.VERIFY_THRESHOLD ?? 0.25);
+    this.threshold = Number(process.env.VERIFY_THRESHOLD ?? 0.23);
   }
 
   async onModuleInit(): Promise<void> {
