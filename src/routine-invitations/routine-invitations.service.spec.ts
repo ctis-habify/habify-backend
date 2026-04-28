@@ -1,16 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { RoutineInvitationsService } from './routine-invitations.service';
-import { RoutineInvitation } from './routine-invitations.entity';
+import { CollaborativeRoutineInvitationsService } from './routine-invitations.service';
+import { CollaborativeRoutineInvitation } from './routine-invitations.entity';
 import { CollaborativeRoutine } from '../routines/collaborative-routines.entity';
-import { RoutineMember } from '../routines/routine-members.entity';
+import { CollaborativeRoutineMember } from '../routines/routine-members.entity';
 import { FriendRequestsService } from '../friend-requests/friend-requests.service';
 import { UsersService } from '../users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 
-describe('RoutineInvitationsService (Unit)', () => {
-  let service: RoutineInvitationsService;
+describe('CollaborativeRoutineInvitationsService (Unit)', () => {
+  let service: CollaborativeRoutineInvitationsService;
 
   const mockInvitationRepo = {
     findOne: jest.fn(),
@@ -44,17 +44,17 @@ describe('RoutineInvitationsService (Unit)', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        RoutineInvitationsService,
-        { provide: getRepositoryToken(RoutineInvitation), useValue: mockInvitationRepo },
+        CollaborativeRoutineInvitationsService,
+        { provide: getRepositoryToken(CollaborativeRoutineInvitation), useValue: mockInvitationRepo },
         { provide: getRepositoryToken(CollaborativeRoutine), useValue: mockRoutineRepo },
-        { provide: getRepositoryToken(RoutineMember), useValue: mockMemberRepo },
+        { provide: getRepositoryToken(CollaborativeRoutineMember), useValue: mockMemberRepo },
         { provide: FriendRequestsService, useValue: mockFriendRequestsService },
         { provide: UsersService, useValue: mockUsersService },
         { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
-    service = module.get<RoutineInvitationsService>(RoutineInvitationsService);
+    service = module.get<CollaborativeRoutineInvitationsService>(CollaborativeRoutineInvitationsService);
   });
 
   afterEach(() => {

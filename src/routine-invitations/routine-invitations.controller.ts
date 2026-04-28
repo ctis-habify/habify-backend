@@ -2,22 +2,22 @@ import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards } from '@nest
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
-import { RoutineInvitationsService } from './routine-invitations.service';
-import { SendRoutineInvitationDto } from '../common/dto/routine-invitations/send-routine-invitation.dto';
-import { RoutineInvitationResponseDto } from '../common/dto/routine-invitations/routine-invitation-response.dto';
+import { CollaborativeRoutineInvitationsService } from './routine-invitations.service';
+import { SendCollaborativeRoutineInvitationDto } from '../common/dto/routine-invitations/send-routine-invitation.dto';
+import { CollaborativeRoutineInvitationResponseDto } from '../common/dto/routine-invitations/routine-invitation-response.dto';
 
 @ApiTags('routine-invitations')
 @ApiBearerAuth('access-token')
 @Controller('routine-invitations')
-export class RoutineInvitationsController {
-  constructor(private readonly invitationsService: RoutineInvitationsService) {}
+export class CollaborativeRoutineInvitationsController {
+  constructor(private readonly invitationsService: CollaborativeRoutineInvitationsService) {}
 
   @UseGuards(AuthGuard)
   @Post()
   async sendInvitation(
     @Req() req: Request,
-    @Body() dto: SendRoutineInvitationDto,
-  ): Promise<RoutineInvitationResponseDto> {
+    @Body() dto: SendCollaborativeRoutineInvitationDto,
+  ): Promise<CollaborativeRoutineInvitationResponseDto> {
     const userId = req.user.id;
     const invitation = await this.invitationsService.sendInvitation(userId, dto);
     // Re-fetch with relations so the response includes names
@@ -27,14 +27,14 @@ export class RoutineInvitationsController {
 
   @UseGuards(AuthGuard)
   @Get('received')
-  async getReceivedInvitations(@Req() req: Request): Promise<RoutineInvitationResponseDto[]> {
+  async getReceivedInvitations(@Req() req: Request): Promise<CollaborativeRoutineInvitationResponseDto[]> {
     const userId = req.user.id;
     return this.invitationsService.getReceivedInvitations(userId);
   }
 
   @UseGuards(AuthGuard)
   @Get('sent')
-  async getSentInvitations(@Req() req: Request): Promise<RoutineInvitationResponseDto[]> {
+  async getSentInvitations(@Req() req: Request): Promise<CollaborativeRoutineInvitationResponseDto[]> {
     const userId = req.user.id;
     return this.invitationsService.getSentInvitations(userId);
   }
@@ -44,7 +44,7 @@ export class RoutineInvitationsController {
   async acceptInvitation(
     @Req() req: Request,
     @Param('id') id: string,
-  ): Promise<RoutineInvitationResponseDto> {
+  ): Promise<CollaborativeRoutineInvitationResponseDto> {
     const userId = req.user.id;
     return this.invitationsService.acceptInvitation(id, userId);
   }

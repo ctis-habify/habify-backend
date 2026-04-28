@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { CollaborativeRoutineLogsService } from './collaborative-routine-logs.service';
 import { CollaborativeRoutineLog } from './collaborative-routine-logs.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { RoutineMember } from './routine-members.entity';
+import { CollaborativeRoutineMember } from './routine-members.entity';
 import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { GcsService } from '../storage/gcs.service';
 import { AiService } from '../ai/ai.service';
@@ -67,7 +67,7 @@ describe('CollaborativeRoutineLogsService (Unit)', () => {
         CollaborativeRoutineLogsService,
         { provide: getRepositoryToken(CollaborativeRoutineLog), useValue: mockLogsRepo },
         { provide: getRepositoryToken(CollaborativeRoutine), useValue: mockRoutinesRepo },
-        { provide: getRepositoryToken(RoutineMember), useValue: mockMemberRepo },
+        { provide: getRepositoryToken(CollaborativeRoutineMember), useValue: mockMemberRepo },
         { provide: XpLogsService, useValue: mockXpLogsService },
         { provide: GcsService, useValue: mockGcsService },
         { provide: AiService, useValue: mockAiService },

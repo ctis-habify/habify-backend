@@ -2,8 +2,8 @@ import { Between } from 'typeorm';
 import { BadRequestException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RoutineLog } from './routine-logs.entity';
-import { Routine } from '../routines/routines.entity';
+import { PersonalRoutineLog } from './routine-logs.entity';
+import { PersonalRoutine } from '../routines/routines.entity';
 import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { GcsService } from 'src/storage/gcs.service';
 import { AiService } from 'src/ai/ai.service';
@@ -15,14 +15,14 @@ const STREAK_BONUS_STEP = 5;
 const STREAK_BONUS_POINTS_PER_STEP = 10;
 
 @Injectable()
-export class RoutineLogsService {
-  private readonly logger = new Logger(RoutineLogsService.name);
+export class PersonalRoutineLogsService {
+  private readonly logger = new Logger(PersonalRoutineLogsService.name);
 
   constructor(
-    @InjectRepository(RoutineLog)
-    private readonly logsRepository: Repository<RoutineLog>,
-    @InjectRepository(Routine)
-    private readonly routinesRepository: Repository<Routine>,
+    @InjectRepository(PersonalRoutineLog)
+    private readonly logsRepository: Repository<PersonalRoutineLog>,
+    @InjectRepository(PersonalRoutine)
+    private readonly routinesRepository: Repository<PersonalRoutine>,
     private readonly xpLogsService: XpLogsService,
     private readonly gcsService: GcsService,
     private readonly aiService: AiService,
@@ -35,10 +35,10 @@ export class RoutineLogsService {
     verificationImageUrl: string,
     userId: string,
     options?: { preverified?: boolean },
-  ): Promise<RoutineLog> {
+  ): Promise<PersonalRoutineLog> {
     const routine = await this.routinesRepository.findOne({ where: { id: routineId } });
     if (!routine) {
-      throw new NotFoundException('Routine not found');
+      throw new NotFoundException('PersonalRoutine not found');
     }
     if (!verificationImageUrl) {
       throw new BadRequestException('Verification image is required');
@@ -58,13 +58,13 @@ export class RoutineLogsService {
       });
 
       if (!aiResult.verified) {
-        this.logger.warn(`Routine verification failed for user: ${userId}`);
-        throw new BadRequestException('Routine verification failed');
+        this.logger.warn(`PersonalRoutine verification failed for user: ${userId}`);
+        throw new BadRequestException('PersonalRoutine verification failed');
       }
 
       isVerified = aiResult.verified;
     }
-    // 1. Create Routine Log
+    // 1. Create PersonalRoutine Log
     const newLog = this.logsRepository.create({
       logDate: new Date(),
       isVerified: isVerified,
@@ -76,7 +76,7 @@ export class RoutineLogsService {
     const savedLog = await this.logsRepository.save(newLog);
 
     if (savedLog.isVerified) {
-      // 2. Update Routine status for immediate feedback
+      // 2. Update PersonalRoutine status for immediate feedback
       const today = new Date().toISOString().split('T')[0];
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -152,7 +152,7 @@ export class RoutineLogsService {
     return savedLog;
   }
 
-  async listLogs(routineId: string, userId: string): Promise<RoutineLog[]> {
+  async listLogs(routineId: string, userId: string): Promise<PersonalRoutineLog[]> {
     const logs = await this.logsRepository.find({
       where: { userId, routine: { id: routineId } },
       order: { createdAt: 'DESC' },

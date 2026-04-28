@@ -29,7 +29,6 @@ export class GcsService {
 
     if (gcsKeyJson) {
       try {
-        // Strip potential surrounding single or double quotes
         let cleanJson = gcsKeyJson.trim();
         if (
           (cleanJson.startsWith("'") && cleanJson.endsWith("'")) ||

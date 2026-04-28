@@ -9,14 +9,14 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { CollaborativeRoutineLog } from './collaborative-routine-logs.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { RoutineMember } from './routine-members.entity';
+import { CollaborativeRoutineMember } from './routine-members.entity';
 import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { GcsService } from 'src/storage/gcs.service';
 import { AiService } from 'src/ai/ai.service';
 import { UsersService } from 'src/users/users.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { CollaborativeScoreService } from '../collaborative-score/collaborative-score.service';
-import { RoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
+import { CollaborativeRoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
 import { CollaborativeChatService } from './collaborative-chat.service';
 import { shouldIncrementStreak } from './routine-cycle.util';
 
@@ -32,8 +32,8 @@ export class CollaborativeRoutineLogsService {
     private readonly logsRepository: Repository<CollaborativeRoutineLog>,
     @InjectRepository(CollaborativeRoutine)
     private readonly routinesRepository: Repository<CollaborativeRoutine>,
-    @InjectRepository(RoutineMember)
-    private readonly memberRepository: Repository<RoutineMember>,
+    @InjectRepository(CollaborativeRoutineMember)
+    private readonly memberRepository: Repository<CollaborativeRoutineMember>,
     private readonly xpLogsService: XpLogsService,
     private readonly gcsService: GcsService,
     private readonly aiService: AiService,
@@ -395,7 +395,7 @@ export class CollaborativeRoutineLogsService {
     return result;
   }
 
-  async getLeaderboard(routineId: string): Promise<RoutineLeaderboardEntryDto[]> {
+  async getLeaderboard(routineId: string): Promise<CollaborativeRoutineLeaderboardEntryDto[]> {
     const routine = await this.routinesRepository.findOne({
       where: { id: routineId },
       relations: ['members', 'members.user'],
@@ -411,11 +411,11 @@ export class CollaborativeRoutineLogsService {
       routine.members.map((member) => member.userId),
     );
 
-    const leaderboard: RoutineLeaderboardEntryDto[] = routine.members.map((member) => {
+    const leaderboard: CollaborativeRoutineLeaderboardEntryDto[] = routine.members.map((member) => {
       const approvedLogs = logCounts[member.userId] || 0;
       const score = approvedLogs * completionXp;
 
-      const entry = new RoutineLeaderboardEntryDto();
+      const entry = new CollaborativeRoutineLeaderboardEntryDto();
       entry.userId = member.userId;
       entry.name = member.user.name;
       entry.username = member.user.username || null;

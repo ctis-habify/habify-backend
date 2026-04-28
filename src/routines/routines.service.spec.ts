@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { RoutinesService } from './routines.service';
-import { Routine } from './routines.entity';
+import { PersonalRoutine } from './routines.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { RoutineList } from '../routine-lists/routine-lists.entity';
+import { PersonalRoutineList } from '../routine-lists/routine-lists.entity';
 import { Category } from '../categories/categories.entity';
-import { RoutineMember } from './routine-members.entity';
+import { CollaborativeRoutineMember } from './routine-members.entity';
 import { User } from '../users/users.entity';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
+import { PersonalRoutineLog } from '../routine-logs/routine-logs.entity';
 import { UsersService } from '../users/users.service';
 import { CollaborativeScoreService } from '../collaborative-score/collaborative-score.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -71,13 +71,13 @@ describe('RoutinesService (Unit)', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RoutinesService,
-        { provide: getRepositoryToken(Routine), useValue: mockRoutineRepo },
+        { provide: getRepositoryToken(PersonalRoutine), useValue: mockRoutineRepo },
         { provide: getRepositoryToken(CollaborativeRoutine), useValue: mockCollabRoutineRepo },
-        { provide: getRepositoryToken(RoutineList), useValue: mockRoutineListRepo },
+        { provide: getRepositoryToken(PersonalRoutineList), useValue: mockRoutineListRepo },
         { provide: getRepositoryToken(Category), useValue: mockCategoryRepo },
-        { provide: getRepositoryToken(RoutineMember), useValue: mockMemberRepo },
+        { provide: getRepositoryToken(CollaborativeRoutineMember), useValue: mockMemberRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
-        { provide: getRepositoryToken(RoutineLog), useValue: mockLogRepo },
+        { provide: getRepositoryToken(PersonalRoutineLog), useValue: mockLogRepo },
         { provide: UsersService, useValue: mockUsersService },
         { provide: CollaborativeScoreService, useValue: mockCollabScoreService },
         { provide: AuditLogsService, useValue: mockAuditLogsService },
@@ -123,7 +123,7 @@ describe('RoutinesService (Unit)', () => {
         lastCompletedDate: '2024-01-10',
         isAiVerified: true,
         streak: 5,
-      } as Routine;
+      };
 
       const todayStr = '2024-01-12'; // Two days later, streak broken and AiVerified should reset
 

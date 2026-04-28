@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual } from 'typeorm';
-import { Routine } from './routines.entity';
+import { PersonalRoutine } from './routines.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
-import { RoutineMember } from './routine-members.entity';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
+import { CollaborativeRoutineMember } from './routine-members.entity';
+import { PersonalRoutineLog } from '../routine-logs/routine-logs.entity';
 import { XpLogsService } from '../xp-logs/xp-logs.service';
 import { User } from '../users/users.entity';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -15,14 +15,14 @@ export class RoutinePenaltyService {
   private readonly logger = new Logger(RoutinePenaltyService.name);
 
   constructor(
-    @InjectRepository(Routine)
-    private readonly routineRepo: Repository<Routine>,
+    @InjectRepository(PersonalRoutine)
+    private readonly routineRepo: Repository<PersonalRoutine>,
     @InjectRepository(CollaborativeRoutine)
     private readonly collabRoutineRepo: Repository<CollaborativeRoutine>,
-    @InjectRepository(RoutineMember)
-    private readonly memberRepo: Repository<RoutineMember>,
-    @InjectRepository(RoutineLog)
-    private readonly logRepo: Repository<RoutineLog>,
+    @InjectRepository(CollaborativeRoutineMember)
+    private readonly memberRepo: Repository<CollaborativeRoutineMember>,
+    @InjectRepository(PersonalRoutineLog)
+    private readonly logRepo: Repository<PersonalRoutineLog>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly xpLogsService: XpLogsService,
@@ -42,7 +42,7 @@ export class RoutinePenaltyService {
     // 2. Process Collaborative Routines
     await this.processCollaborativePenalties(yesterdayStr);
 
-    this.logger.log('Routine penalty check completed.');
+    this.logger.log('Personal PersonalRoutine penalty check completed.');
   }
 
   private async processPersonalPenalties(yesterdayStr: string): Promise<void> {
@@ -209,7 +209,7 @@ export class RoutinePenaltyService {
 
     if (members.length <= 1) {
       await this.collabRoutineRepo.delete(routine.id);
-      this.logger.log(`Routine ${routine.id} deleted: creator was the sole member after defeat.`);
+      this.logger.log(`Collaborative PersonalRoutine ${routine.id} deleted: creator was the sole member after defeat.`);
       return;
     }
 
@@ -228,7 +228,7 @@ export class RoutinePenaltyService {
     await this.memberRepo.remove(creatorMembership);
 
     this.logger.log(
-      `Routine ${routine.id}: creator removed after defeat, ` +
+      `Collaborative PersonalRoutine ${routine.id}: creator removed after defeat, ` +
         `new creator is user ${newCreator.userId}.`,
     );
   }

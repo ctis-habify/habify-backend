@@ -9,26 +9,26 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RoutineInvitation, RoutineInvitationStatus } from './routine-invitations.entity';
+import { CollaborativeRoutineInvitation, CollaborativeRoutineInvitationStatus } from './routine-invitations.entity';
 import { CollaborativeRoutine } from '../routines/collaborative-routines.entity';
-import { RoutineMember } from '../routines/routine-members.entity';
+import { CollaborativeRoutineMember } from '../routines/routine-members.entity';
 import { FriendRequestsService } from '../friend-requests/friend-requests.service';
 import { UsersService } from '../users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { SendRoutineInvitationDto } from '../common/dto/routine-invitations/send-routine-invitation.dto';
-import { RoutineInvitationResponseDto } from '../common/dto/routine-invitations/routine-invitation-response.dto';
+import { SendCollaborativeRoutineInvitationDto } from '../common/dto/routine-invitations/send-routine-invitation.dto';
+import { CollaborativeRoutineInvitationResponseDto } from '../common/dto/routine-invitations/routine-invitation-response.dto';
 
 @Injectable()
-export class RoutineInvitationsService {
+export class CollaborativeRoutineInvitationsService {
   constructor(
-    @InjectRepository(RoutineInvitation)
-    private readonly invitationRepo: Repository<RoutineInvitation>,
+    @InjectRepository(CollaborativeRoutineInvitation)
+    private readonly invitationRepo: Repository<CollaborativeRoutineInvitation>,
 
     @InjectRepository(CollaborativeRoutine)
     private readonly routineRepo: Repository<CollaborativeRoutine>,
 
-    @InjectRepository(RoutineMember)
-    private readonly memberRepo: Repository<RoutineMember>,
+    @InjectRepository(CollaborativeRoutineMember)
+    private readonly memberRepo: Repository<CollaborativeRoutineMember>,
 
     private readonly friendRequestsService: FriendRequestsService,
     private readonly usersService: UsersService,
@@ -38,8 +38,8 @@ export class RoutineInvitationsService {
 
   async sendInvitation(
     fromUserId: string,
-    dto: SendRoutineInvitationDto,
-  ): Promise<RoutineInvitation> {
+    dto: SendCollaborativeRoutineInvitationDto,
+  ): Promise<CollaborativeRoutineInvitation> {
     const { routineId, toUserId } = dto;
 
     if (fromUserId === toUserId) {
@@ -80,7 +80,7 @@ export class RoutineInvitationsService {
       where: {
         routineId,
         toUserId,
-        status: RoutineInvitationStatus.pending,
+        status: CollaborativeRoutineInvitationStatus.pending,
       },
     });
     if (existingInvitation) {
@@ -92,7 +92,7 @@ export class RoutineInvitationsService {
       routineId,
       fromUserId,
       toUserId,
-      status: RoutineInvitationStatus.pending,
+      status: CollaborativeRoutineInvitationStatus.pending,
     });
 
     const saved = await this.invitationRepo.save(invitation);
@@ -103,7 +103,7 @@ export class RoutineInvitationsService {
       .createAndPush({
         userId: toUserId,
         type: 'routine_invitation',
-        title: 'Routine Invitation',
+        title: 'PersonalRoutine Invitation',
         body: `${senderName} invited you to join "${routine.routineName}".`,
         collaborativeRoutineId: routineId,
       })
@@ -112,9 +112,9 @@ export class RoutineInvitationsService {
     return saved;
   }
 
-  async getReceivedInvitations(userId: string): Promise<RoutineInvitationResponseDto[]> {
+  async getReceivedInvitations(userId: string): Promise<CollaborativeRoutineInvitationResponseDto[]> {
     const invitations = await this.invitationRepo.find({
-      where: { toUserId: userId, status: RoutineInvitationStatus.pending },
+      where: { toUserId: userId, status: CollaborativeRoutineInvitationStatus.pending },
       relations: ['routine', 'fromUser', 'toUser'],
       order: { createdAt: 'DESC' },
     });
@@ -122,7 +122,7 @@ export class RoutineInvitationsService {
     return invitations.map((inv) => this.toResponseDto(inv));
   }
 
-  async getSentInvitations(userId: string): Promise<RoutineInvitationResponseDto[]> {
+  async getSentInvitations(userId: string): Promise<CollaborativeRoutineInvitationResponseDto[]> {
     const invitations = await this.invitationRepo.find({
       where: { fromUserId: userId },
       relations: ['routine', 'fromUser', 'toUser'],
@@ -135,7 +135,7 @@ export class RoutineInvitationsService {
   async acceptInvitation(
     invitationId: string,
     userId: string,
-  ): Promise<RoutineInvitationResponseDto> {
+  ): Promise<CollaborativeRoutineInvitationResponseDto> {
     const invitation = await this.invitationRepo.findOne({
       where: { id: invitationId },
       relations: ['routine', 'fromUser', 'toUser'],
@@ -147,7 +147,7 @@ export class RoutineInvitationsService {
     if (invitation.toUserId !== userId) {
       throw new ForbiddenException('You can only accept invitations sent to you');
     }
-    if (invitation.status !== RoutineInvitationStatus.pending) {
+    if (invitation.status !== CollaborativeRoutineInvitationStatus.pending) {
       throw new BadRequestException('Invitation is no longer pending');
     }
 
@@ -168,7 +168,7 @@ export class RoutineInvitationsService {
       await this.memberRepo.save(membership);
     }
 
-    invitation.status = RoutineInvitationStatus.accepted;
+    invitation.status = CollaborativeRoutineInvitationStatus.accepted;
     const saved = await this.invitationRepo.save(invitation);
 
     return this.toResponseDto(saved);
@@ -185,18 +185,18 @@ export class RoutineInvitationsService {
     if (invitation.toUserId !== userId) {
       throw new ForbiddenException('You can only decline invitations sent to you');
     }
-    if (invitation.status !== RoutineInvitationStatus.pending) {
+    if (invitation.status !== CollaborativeRoutineInvitationStatus.pending) {
       throw new BadRequestException('Invitation is no longer pending');
     }
 
-    invitation.status = RoutineInvitationStatus.declined;
+    invitation.status = CollaborativeRoutineInvitationStatus.declined;
     await this.invitationRepo.save(invitation);
 
     return { message: 'Invitation declined' };
   }
 
-  private toResponseDto(inv: RoutineInvitation): RoutineInvitationResponseDto {
-    const dto = new RoutineInvitationResponseDto();
+  private toResponseDto(inv: CollaborativeRoutineInvitation): CollaborativeRoutineInvitationResponseDto {
+    const dto = new CollaborativeRoutineInvitationResponseDto();
     dto.id = inv.id;
     dto.routineId = inv.routineId;
     dto.routineName = inv.routine?.routineName ?? '';

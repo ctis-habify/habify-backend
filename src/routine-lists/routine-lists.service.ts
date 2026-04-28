@@ -1,24 +1,24 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RoutineList } from './routine-lists.entity';
-import { CreateRoutineListDto } from '../common/dto/routines/create-routine-list.dto';
+import { PersonalRoutineList } from './routine-lists.entity';
+import { CreatePersonalRoutineListDto } from '../common/dto/routines/create-routine-list.dto';
 import { Category } from '../categories/categories.entity';
-import { UpdateRoutineListDto } from '../common/dto/routines/update-routine-list.dto';
-import { Routine } from 'src/routines/routines.entity';
+import { UpdatePersonalRoutineListDto } from '../common/dto/routines/update-routine-list.dto';
+import { PersonalRoutine } from 'src/routines/routines.entity';
 
 @Injectable()
-export class RoutineListsService {
+export class PersonalRoutineListsService {
   constructor(
-    @InjectRepository(RoutineList)
-    private readonly routineListRepository: Repository<RoutineList>,
+    @InjectRepository(PersonalRoutineList)
+    private readonly routineListRepository: Repository<PersonalRoutineList>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
-    @InjectRepository(Routine)
-    private readonly routineRepository: Repository<Routine>,
+    @InjectRepository(PersonalRoutine)
+    private readonly routineRepository: Repository<PersonalRoutine>,
   ) {}
 
-  async create(createDto: CreateRoutineListDto, userId: string): Promise<RoutineList> {
+  async create(createDto: CreatePersonalRoutineListDto, userId: string): Promise<PersonalRoutineList> {
     const { title, categoryId } = createDto;
 
     const category = await this.categoryRepository.findOne({
@@ -37,19 +37,19 @@ export class RoutineListsService {
     return await this.routineListRepository.save(newList);
   }
 
-  async findAll(userId: string): Promise<RoutineList[]> {
+  async findAll(userId: string): Promise<PersonalRoutineList[]> {
     return await this.routineListRepository.find({
       where: { userId: userId },
       relations: ['category'],
     });
   }
 
-  async update(id: number, updateDto: UpdateRoutineListDto, userId: string): Promise<RoutineList> {
+  async update(id: number, updateDto: UpdatePersonalRoutineListDto, userId: string): Promise<PersonalRoutineList> {
     const list = await this.routineListRepository.findOne({
       where: { id, userId },
     });
     if (!list) {
-      throw new NotFoundException('Routine list not found');
+      throw new NotFoundException('PersonalRoutine list not found');
     }
 
     if (updateDto.title) {
@@ -74,7 +74,7 @@ export class RoutineListsService {
       where: { id, userId },
     });
     if (!list) {
-      throw new NotFoundException('Routine list not found');
+      throw new NotFoundException('PersonalRoutine list not found');
     }
 
     // Check for associated routines
@@ -87,6 +87,6 @@ export class RoutineListsService {
     }
 
     await this.routineListRepository.delete(id);
-    return { message: 'Routine list deleted successfully' };
+    return { message: 'PersonalRoutine list deleted successfully' };
   }
 }

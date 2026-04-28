@@ -87,9 +87,7 @@ export class AiService implements OnModuleInit {
       this.logger.log(`Starting AI verification for image: ${payload.imageUrl}`);
       await this.ensureModelsLoaded();
 
-      // Translate Turkish routine name to English for better CLIP accuracy
       const prompt = await this.translationService.translate(payload.text);
-
       const imgBuf = await this.downloadImageBuffer(payload.imageUrl);
       const imageInputs = await this.preprocessToPixelValuesFromBuffer(imgBuf);
 
@@ -114,8 +112,6 @@ export class AiService implements OnModuleInit {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`AI verification error details: ${message}`);
 
-      // Teknik bir hata olsa bile (boyut, timeout vb.) sonucu 'failed' olarak dönüyoruz
-      // ki frontend "System Busy" demesin.
       return { score: 0, verified: false, pending: false };
     }
   }
@@ -124,8 +120,8 @@ export class AiService implements OnModuleInit {
     this.validateUrl(url);
     const res = await axios.get(url, {
       responseType: 'arraybuffer',
-      timeout: 20000, // 20 saniye timeout (daha uzun süre)
-      maxContentLength: 15 * 1024 * 1024, // 15MB limit (3 katına çıktı)
+      timeout: 20000, 
+      maxContentLength: 15 * 1024 * 1024, 
     });
     return Buffer.from(res.data);
   }
@@ -141,7 +137,7 @@ export class AiService implements OnModuleInit {
       host === '127.0.0.1' ||
       host.startsWith('192.168.') ||
       host.startsWith('10.') ||
-      host.includes('169.254'); // Metadata server
+      host.includes('169.254'); 
 
     if (isInternal) {
       throw new Error('Access to internal network is forbidden.');

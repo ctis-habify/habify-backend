@@ -5,10 +5,10 @@ import { Between, Repository } from 'typeorm';
 import axios from 'axios';
 
 import { Notification } from './notifications.entity';
-import { Routine } from '../routines/routines.entity';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
+import { PersonalRoutine} from '../routines/routines.entity';
+import { PersonalRoutineLog} from '../routine-logs/routine-logs.entity';
 import { CollaborativeRoutine } from '../routines/collaborative-routines.entity';
-import { RoutineMember } from '../routines/routine-members.entity';
+import { CollaborativeRoutineMember } from '../routines/routine-members.entity';
 import { CollaborativeRoutineLog } from '../routines/collaborative-routine-logs.entity';
 import { User } from '../users/users.entity';
 import { SendPokeDto } from '../common/dto/pokes/send-poke.dto';
@@ -22,17 +22,17 @@ export class NotificationsService {
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
 
-    @InjectRepository(Routine)
-    private readonly routineRepo: Repository<Routine>,
+    @InjectRepository(PersonalRoutine)
+    private readonly routineRepo: Repository<PersonalRoutine>,
 
-    @InjectRepository(RoutineLog)
-    private readonly logRepo: Repository<RoutineLog>,
+    @InjectRepository(PersonalRoutineLog)
+    private readonly logRepo: Repository<PersonalRoutineLog>,
 
     @InjectRepository(CollaborativeRoutine)
     private readonly collabRoutineRepo: Repository<CollaborativeRoutine>,
 
-    @InjectRepository(RoutineMember)
-    private readonly memberRepo: Repository<RoutineMember>,
+    @InjectRepository(CollaborativeRoutineMember)
+    private readonly memberRepo: Repository<CollaborativeRoutineMember>,
 
     @InjectRepository(CollaborativeRoutineLog)
     private readonly collabLogRepo: Repository<CollaborativeRoutineLog>,
@@ -58,6 +58,7 @@ export class NotificationsService {
       });
 
       for (const routine of routines) {
+        if (!this.hasRoutineStarted(routine, now)) continue;
         await this.processRoutineReminder(routine, now);
       }
 
@@ -67,6 +68,7 @@ export class NotificationsService {
 
       for (const collab of collabRoutines) {
         for (const member of collab.members) {
+          if (!this.hasRoutineStarted(collab, now)) continue;
           await this.processCollabRoutineReminder(collab, member, now);
         }
       }
@@ -81,7 +83,23 @@ export class NotificationsService {
     }
   }
 
-  private async processRoutineReminder(routine: Routine, now: Date): Promise<void> {
+  private hasRoutineStarted(routine: PersonalRoutine | CollaborativeRoutine, now: Date): boolean {
+    if (routine.startDate) {
+      const todayStr = now.toISOString().split('T')[0];
+      if (routine.startDate > todayStr) return false;
+    }
+
+    if (routine.startTime) {
+      const [h, m, s] = routine.startTime.split(':').map(Number);
+      const startDateTime = new Date(now);
+      startDateTime.setHours(h ?? 0, m ?? 0, s ?? 0, 0);
+      if (now < startDateTime) return false;
+    }
+    
+    return true;
+  }
+
+  private async processRoutineReminder(routine: PersonalRoutine, now: Date): Promise<void> {
     const deadline = this.getDeadline(routine, now);
     if (!deadline || now >= deadline) return;
 
@@ -107,7 +125,7 @@ export class NotificationsService {
 
   private async processCollabRoutineReminder(
     routine: CollaborativeRoutine,
-    member: RoutineMember,
+    member: CollaborativeRoutineMember,
     now: Date,
   ): Promise<void> {
     const deadline = this.getDeadline(routine, now);
@@ -133,7 +151,7 @@ export class NotificationsService {
     if (rows.length > 0) await this.sendPushNotification(member.userId, rows[0]);
   }
 
-  private getDeadline(routine: Routine | CollaborativeRoutine, now: Date): Date | null {
+  private getDeadline(routine: PersonalRoutine | CollaborativeRoutine, now: Date): Date | null {
     const freq = routine.frequencyType?.toLowerCase();
     if (freq === 'daily') {
       const [h, m, s] = (routine.endTime || '23:59:59').split(':').map(Number);
@@ -154,7 +172,7 @@ export class NotificationsService {
   }
 
   private async isCompleted(
-    routine: Routine | CollaborativeRoutine,
+    routine: PersonalRoutine | CollaborativeRoutine,
     userId: string,
     now: Date,
   ): Promise<boolean> {
@@ -191,9 +209,9 @@ export class NotificationsService {
       logDate: Between(start, end),
       isVerified: true,
     };
-    if (!isCollab) where.userId = (routine as Routine).userId;
+    if (!isCollab) where.userId = (routine as PersonalRoutine).userId;
 
-    const found = await (repo as Repository<RoutineLog | CollaborativeRoutineLog>).findOne({
+    const found = await (repo as Repository<PersonalRoutineLog | CollaborativeRoutineLog>).findOne({
       where,
     });
     return !!found;
@@ -302,8 +320,6 @@ export class NotificationsService {
       throw new BadRequestException('Target user is not a member of this routine');
     }
 
-    // Rate-limit check removed to support "Infinite Poke" functionality as requested.
-
     const fromUser = await this.userRepo.findOne({ where: { id: fromUserId } });
     const senderName = fromUser?.name ?? 'Someone';
 
@@ -317,8 +333,6 @@ export class NotificationsService {
 
     return { message: 'Poke sent' };
   }
-
-  // ── REST API methods ──
 
   async getUserNotifications(
     userId: string,
@@ -361,9 +375,6 @@ export class NotificationsService {
     await this.userRepo.update(userId, { fcmToken: '' });
   }
 
-  /**
-   * Deletes notifications older than 30 days.
-   */
   async cleanup(): Promise<number> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

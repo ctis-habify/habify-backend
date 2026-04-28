@@ -1,6 +1,6 @@
 import { IsDateString, IsEnum, IsOptional, IsString, IsBoolean, IsInt } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CreateRoutineDto } from './create-routines.dto';
+import { CreatePersonalRoutineDto } from './create-routines.dto';
 import { Gender } from 'src/users/users.entity';
 
 export enum RoutineType {
@@ -8,7 +8,7 @@ export enum RoutineType {
   collaborative = 'collaborative',
 }
 
-export class CreateCollaborativeRoutineDto extends CreateRoutineDto {
+export class CreateCollaborativeRoutineDto extends CreatePersonalRoutineDto {
   @ApiProperty({ example: 1 })
   @IsInt()
   categoryId: number;

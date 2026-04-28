@@ -6,12 +6,12 @@ import {
   JoinColumn,
   CreateDateColumn,
 } from 'typeorm';
-// Avoid circular dependency at runtime by using string in the decorator and type-only import if needed
+
 import type { CollaborativeRoutine } from './collaborative-routines.entity';
 import { User } from '../users/users.entity';
 
 @Entity('routine_members')
-export class RoutineMember {
+export class CollaborativeRoutineMember {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

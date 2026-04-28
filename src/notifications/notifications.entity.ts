@@ -7,7 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from '../users/users.entity';
-import { Routine } from '../routines/routines.entity';
+import { PersonalRoutine } from '../routines/routines.entity';
 import { CollaborativeRoutine } from '../routines/collaborative-routines.entity';
 
 @Entity('notifications')
@@ -43,9 +43,9 @@ export class Notification {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => Routine, { onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => PersonalRoutine, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'routine_id' })
-  routine: Routine;
+  routine: PersonalRoutine;
 
   @Column({ type: 'uuid', name: 'collaborative_routine_id', nullable: true })
   collaborativeRoutineId: string | null;

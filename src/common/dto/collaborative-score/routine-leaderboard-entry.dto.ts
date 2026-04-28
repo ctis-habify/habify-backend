@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserCupDto } from './user-cup.dto';
 
-export class RoutineLeaderboardEntryDto {
+export class CollaborativeRoutineLeaderboardEntryDto {
   @ApiProperty({ example: 1, description: 'Rank of the user in this routine' })
   rank: number;
 

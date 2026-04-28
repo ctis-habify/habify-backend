@@ -38,7 +38,7 @@ export class CollaborativeChatService {
       throw new BadRequestException('Message is too long');
     }
     const routine = await this.routineRepo.findOne({ where: { id: routineId } });
-    if (!routine) throw new NotFoundException('Routine not found');
+    if (!routine) throw new NotFoundException('PersonalRoutine not found');
     const chat = this.chatRepo.create({ routineId, userId, message: normalizedMessage });
     return this.chatRepo.save(chat);
   }
@@ -49,7 +49,7 @@ export class CollaborativeChatService {
     message: string,
   ): Promise<CollaborativeChatMessage> {
     const routine = await this.routineRepo.findOne({ where: { id: routineId } });
-    if (!routine) throw new NotFoundException('Routine not found');
+    if (!routine) throw new NotFoundException('PersonalRoutine not found');
     const chat = this.chatRepo.create({
       routineId,
       userId: actorUserId,

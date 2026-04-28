@@ -14,28 +14,28 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { RoutinesService } from './routines.service';
-import { CreateRoutineDto } from '../common/dto/routines/create-routines.dto';
+import { CreatePersonalRoutineDto } from '../common/dto/routines/create-routines.dto';
 import { CreateCollaborativeRoutineDto } from '../common/dto/routines/create-collaborative-routine.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { UpdateRoutineDto } from 'src/common/dto/routines/update-routine.dto';
-import { RoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
+import { UpdatePersonalRoutineDto } from 'src/common/dto/routines/update-routine.dto';
+import { PersonalRoutineListWithRoutinesDto } from 'src/common/dto/routines/routine-list-with-routines.dto';
 import { GroupDetailResponseDto } from 'src/common/dto/routines/group-detail-response.dto';
 import { PublicCollaborativeRoutineResponseDto } from 'src/common/dto/routines/public-collaborative-routine-response.dto';
 import { AiService } from 'src/ai/ai.service';
 import { GcsService } from 'src/storage/gcs.service';
 import { XpLogsService } from 'src/xp-logs/xp-logs.service';
-import { RoutineLogsService } from 'src/routine-logs/routine-logs.service';
+import { PersonalRoutineLogsService } from 'src/routine-logs/routine-logs.service';
 import { CollaborativeRoutineLogsService } from './collaborative-routine-logs.service';
 import { UsersService } from 'src/users/users.service';
 import { TodayScreenResponseDto } from 'src/common/dto/routines/today-screen-response.dto';
 import { VerifyResult } from 'src/ai/ai.service';
 import { CollaborativeRoutineViewDto } from '../common/dto/routines/collaborative-routine-view.dto';
-import { RoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
+import { CollaborativeRoutineLeaderboardEntryDto } from '../common/dto/collaborative-score/routine-leaderboard-entry.dto';
 import { ApiOperation } from '@nestjs/swagger';
 
 import type { Request } from 'express';
-import { Routine } from './routines.entity';
+import { PersonalRoutine } from './routines.entity';
 import { CollaborativeRoutine } from './collaborative-routines.entity';
 
 @ApiTags('routines')
@@ -48,7 +48,7 @@ export class RoutinesController {
     private readonly ai: AiService,
     private readonly gcs: GcsService,
     private readonly xp: XpLogsService,
-    private readonly routineLogs: RoutineLogsService,
+    private readonly routineLogs: PersonalRoutineLogsService,
     private readonly collaborativeLogs: CollaborativeRoutineLogsService,
     private readonly usersService: UsersService,
   ) {}
@@ -79,18 +79,18 @@ export class RoutinesController {
 
   @UseGuards(AuthGuard)
   @Get('me')
-  async getMyRoutines(@Req() req: Request): Promise<Routine[]> {
+  async getMyPersonalRoutines(@Req() req: Request): Promise<PersonalRoutine[]> {
     const userId = this.getUserId(req);
-    return this.routinesService.getUserRoutines(userId);
+    return this.routinesService.getUserPersonalRoutines(userId);
   }
 
   // Create new routine
   @UseGuards(AuthGuard)
   @Post()
-  async createRoutine(@Req() req: Request, @Body() dto: CreateRoutineDto): Promise<Routine> {
+  async createPersonalRoutine(@Req() req: Request, @Body() dto: CreatePersonalRoutineDto): Promise<PersonalRoutine> {
     const userId = this.getUserId(req);
 
-    return this.routinesService.createRoutine({
+    return this.routinesService.createPersonalRoutine({
       ...dto,
       userId,
     });
@@ -207,7 +207,7 @@ export class RoutinesController {
   // list grouped routines
   @UseGuards(AuthGuard)
   @Get('grouped')
-  async getMyRoutinesListed(@Req() req: Request): Promise<RoutineListWithRoutinesDto[]> {
+  async getMyRoutinesListed(@Req() req: Request): Promise<PersonalRoutineListWithRoutinesDto[]> {
     const userId = this.getUserId(req);
     const todayStr = this.getTodayStr(req);
     return this.routinesService.getAllRoutinesByList(userId, todayStr);
@@ -228,8 +228,8 @@ export class RoutinesController {
       }
 
       // Try personal routine first
-      let routine: Routine | CollaborativeRoutine | null =
-        await this.routinesService.getRoutineById(userId, routineId);
+      let routine: PersonalRoutine | CollaborativeRoutine | null =
+        await this.routinesService.getPersonalRoutineById(userId, routineId);
       let isCollab = false;
 
       if (!routine) {
@@ -237,7 +237,7 @@ export class RoutinesController {
         isCollab = true;
       }
 
-      if (!routine) throw new NotFoundException('Routine not found');
+      if (!routine) throw new NotFoundException('PersonalRoutine not found');
 
       if (isCollab) {
         await this.collaborativeLogs.create(routineId, objectPath, userId);
@@ -291,7 +291,7 @@ export class RoutinesController {
   @ApiOperation({ summary: 'Get leaderboard for a specific collaborative routine' })
   async getCollaborativeRoutineLeaderboard(
     @Param('id') id: string,
-  ): Promise<RoutineLeaderboardEntryDto[]> {
+  ): Promise<CollaborativeRoutineLeaderboardEntryDto[]> {
     return this.collaborativeLogs.getLeaderboard(id);
   }
 
@@ -336,12 +336,12 @@ export class RoutinesController {
 
   @UseGuards(AuthGuard)
   @Get(':id')
-  async getRoutineById(
+  async getPersonalRoutineById(
     @Req() req: Request,
     @Param('id') id: string,
-  ): Promise<Routine | CollaborativeRoutine | null> {
+  ): Promise<PersonalRoutine | CollaborativeRoutine | null> {
     const userId = this.getUserId(req);
-    const routine = await this.routinesService.getRoutineById(userId, id);
+    const routine = await this.routinesService.getPersonalRoutineById(userId, id);
     return routine || this.routinesService.getCollaborativeRoutineById(id);
   }
 
@@ -350,8 +350,8 @@ export class RoutinesController {
   async updateRoutine(
     @Req() req: Request,
     @Param('id') id: string,
-    @Body() dto: UpdateRoutineDto,
-  ): Promise<Routine | CollaborativeRoutine> {
+    @Body() dto: UpdatePersonalRoutineDto,
+  ): Promise<PersonalRoutine | CollaborativeRoutine> {
     const userId = this.getUserId(req);
     return this.routinesService.updateRoutine(userId, id, dto);
   }

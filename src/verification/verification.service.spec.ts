@@ -11,11 +11,11 @@ import { Job } from 'bull';
 
 import { VerificationService, VerificationJobData } from './verification.service';
 import { Verification } from './verification.entity';
-import { Routine } from '../routines/routines.entity';
+import { PersonalRoutine } from '../routines/routines.entity';
 
 import { AiService } from '../ai/ai.service';
 import { GcsService } from '../storage/gcs.service';
-import { RoutineLogsService } from '../routine-logs/routine-logs.service';
+import { PersonalRoutineLogsService } from '../routine-logs/routine-logs.service';
 
 describe('VerificationService (unit)', () => {
   let service: VerificationService;
@@ -52,10 +52,10 @@ describe('VerificationService (unit)', () => {
 
         { provide: AiService, useValue: aiMock },
         { provide: GcsService, useValue: gcsMock },
-        { provide: RoutineLogsService, useValue: routineLogsMock },
+        { provide: PersonalRoutineLogsService, useValue: routineLogsMock },
 
         { provide: getRepositoryToken(Verification), useValue: verificationRepoMock },
-        { provide: getRepositoryToken(Routine), useValue: routineRepoMock },
+        { provide: getRepositoryToken(PersonalRoutine), useValue: routineRepoMock },
 
         { provide: getQueueToken('verification'), useValue: queueMock },
       ],

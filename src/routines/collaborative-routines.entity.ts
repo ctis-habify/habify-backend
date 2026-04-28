@@ -8,7 +8,7 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 import { Category } from '../categories/categories.entity';
-import { RoutineMember } from './routine-members.entity';
+import { CollaborativeRoutineMember } from './routine-members.entity';
 import { Gender } from '../users/users.entity';
 
 @Entity('collaborative_routines')
@@ -79,6 +79,6 @@ export class CollaborativeRoutine {
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @OneToMany(() => RoutineMember, (member) => member.routine)
-  members: RoutineMember[];
+  @OneToMany(() => CollaborativeRoutineMember, (member) => member.routine)
+  members: CollaborativeRoutineMember[];
 }

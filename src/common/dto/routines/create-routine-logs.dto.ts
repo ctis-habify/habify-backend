@@ -1,6 +1,6 @@
 import { IsBoolean, IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
-export class CreateRoutineLogDto {
+export class CreatePersonalRoutineLogDto {
   @IsNotEmpty()
   @IsUUID()
   routineId: string;

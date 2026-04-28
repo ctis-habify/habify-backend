@@ -1,7 +1,7 @@
 import { IsNotEmpty, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class SendRoutineInvitationDto {
+export class SendCollaborativeRoutineInvitationDto {
   @ApiProperty({ description: 'ID of the collaborative routine to invite to' })
   @IsNotEmpty()
   @IsUUID()

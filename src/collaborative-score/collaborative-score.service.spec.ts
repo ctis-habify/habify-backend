@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CollaborativeScoreService } from './collaborative-score.service';
 import { CollaborativeScore } from './collaborative-score.entity';
-import { RoutineMember } from '../routines/routine-members.entity';
+import { CollaborativeRoutineMember } from '../routines/routine-members.entity';
 import { CollaborativeRoutineLog } from '../routines/collaborative-routine-logs.entity';
 
 describe('CollaborativeScoreService (Unit)', () => {
@@ -28,7 +28,7 @@ describe('CollaborativeScoreService (Unit)', () => {
       providers: [
         CollaborativeScoreService,
         { provide: getRepositoryToken(CollaborativeScore), useValue: mockScoreRepo },
-        { provide: getRepositoryToken(RoutineMember), useValue: mockMemberRepo },
+        { provide: getRepositoryToken(CollaborativeRoutineMember), useValue: mockMemberRepo },
         { provide: getRepositoryToken(CollaborativeRoutineLog), useValue: mockCollabLogRepo },
       ],
     }).compile();

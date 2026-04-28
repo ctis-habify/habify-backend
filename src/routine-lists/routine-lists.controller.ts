@@ -1,8 +1,8 @@
 import { Controller, Post, Get, Patch, Delete, Param, Body, UseGuards, Req } from '@nestjs/common';
-import { RoutineListsService } from './routine-lists.service';
-import { RoutineList } from './routine-lists.entity';
-import { CreateRoutineListDto } from '../common/dto/routines/create-routine-list.dto';
-import { UpdateRoutineListDto } from '../common/dto/routines/update-routine-list.dto';
+import { PersonalRoutineListsService } from './routine-lists.service';
+import { PersonalRoutineList } from './routine-lists.entity';
+import { CreatePersonalRoutineListDto } from '../common/dto/routines/create-routine-list.dto';
+import { UpdatePersonalRoutineListDto } from '../common/dto/routines/update-routine-list.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
@@ -12,19 +12,19 @@ import type { Request } from 'express';
 @ApiBearerAuth('access-token')
 @Controller('routine-lists')
 @UseGuards(AuthGuard)
-export class RoutineListsController {
-  constructor(private readonly routineListsService: RoutineListsService) {}
+export class PersonalRoutineListsController {
+  constructor(private readonly routineListsService: PersonalRoutineListsService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new routine list' })
-  create(@Body() createDto: CreateRoutineListDto, @Req() req: Request): Promise<RoutineList> {
+  create(@Body() createDto: CreatePersonalRoutineListDto, @Req() req: Request): Promise<PersonalRoutineList> {
     const userId = req.user.id;
     return this.routineListsService.create(createDto, userId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all routine lists for the current user' })
-  async getMyLists(@Req() req: Request): Promise<RoutineList[]> {
+  async getMyLists(@Req() req: Request): Promise<PersonalRoutineList[]> {
     const userId = req.user.id;
     return this.routineListsService.findAll(userId);
   }
@@ -33,9 +33,9 @@ export class RoutineListsController {
   @ApiOperation({ summary: 'Update routine list name' })
   update(
     @Param('id') id: string,
-    @Body() updateDto: UpdateRoutineListDto,
+    @Body() updateDto: UpdatePersonalRoutineListDto,
     @Req() req: Request,
-  ): Promise<RoutineList> {
+  ): Promise<PersonalRoutineList> {
     const userId = req.user.id;
     return this.routineListsService.update(+id, updateDto, userId);
   }

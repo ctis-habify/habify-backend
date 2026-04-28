@@ -1,27 +1,22 @@
 import { Controller, Post, Body, UseGuards, Req, Get, Param, Query } from '@nestjs/common';
 import type { Request } from 'express';
 
-import { RoutineLogsService } from './routine-logs.service';
-import { CreateRoutineLogDto } from '../common/dto/routines/create-routine-logs.dto';
+import { PersonalRoutineLogsService } from './routine-logs.service';
+import { CreatePersonalRoutineLogDto } from '../common/dto/routines/create-routine-logs.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
-import { RoutineLog } from './routine-logs.entity';
-
-import { CollaborativeRoutineLogsService } from '../routines/collaborative-routine-logs.service';
-import { RoutinesService } from '../routines/routines.service';
+import { PersonalRoutineLog } from './routine-logs.entity';
 
 @ApiBearerAuth('access-token')
 @Controller('routine-logs')
 @UseGuards(AuthGuard)
-export class RoutineLogsController {
+export class PersonalRoutineLogsController {
   constructor(
-    private readonly logsService: RoutineLogsService,
-    private readonly collaborativeLogs: CollaborativeRoutineLogsService,
-    private readonly routinesService: RoutinesService,
+    private readonly logsService: PersonalRoutineLogsService,
   ) {}
 
   @Post()
-  create(@Body() createLogDto: CreateRoutineLogDto, @Req() req: Request): Promise<RoutineLog> {
+  create(@Body() createLogDto: CreatePersonalRoutineLogDto, @Req() req: Request): Promise<PersonalRoutineLog> {
     const userId = req.user.id;
     return this.logsService.create(
       createLogDto.routineId,
@@ -31,11 +26,11 @@ export class RoutineLogsController {
   }
 
   @Get(':routineId')
-  @ApiOkResponse({ type: RoutineLog, isArray: true })
+  @ApiOkResponse({ type: PersonalRoutineLog, isArray: true })
   async listLogs(
     @Param('routineId') routineId: string,
     @Req() req: Request,
-  ): Promise<RoutineLog[]> {
+  ): Promise<PersonalRoutineLog[]> {
     const userId = req.user.id;
     return this.logsService.listLogs(routineId, userId);
   }

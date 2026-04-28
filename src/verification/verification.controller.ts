@@ -23,8 +23,6 @@ export class VerificationController {
   ): Promise<Record<string, unknown>> {
     const userId = req.user.id;
     const saved = await this.verificationService.submit(dto, userId);
-
-    // Objenin içindeki tüm alanları tek tek ve garanti bir şekilde gönderiyoruz.
     return {
       id: saved.id,
       status: saved.status,

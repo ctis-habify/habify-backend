@@ -1,8 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { RoutineList } from '../routine-lists/routine-lists.entity';
+import { PersonalRoutineList } from '../routine-lists/routine-lists.entity';
 
-@Entity('routines')
-export class Routine {
+@Entity('personal_routines')
+export class PersonalRoutine {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -45,7 +45,7 @@ export class Routine {
   @Column({ default: true })
   active: boolean;
 
-  @ManyToOne(() => RoutineList, (list) => list.routines)
+  @ManyToOne(() => PersonalRoutineList, (list) => list.routines)
   @JoinColumn({ name: 'routine_list_id' })
-  routineList: RoutineList;
+  routineList: PersonalRoutineList;
 }

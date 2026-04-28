@@ -4,11 +4,11 @@ import { RegisterDto } from '../common/dto/auth/register.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, DataSource } from 'typeorm';
 import { User } from './users.entity';
-import { RoutineLog } from 'src/routine-logs/routine-logs.entity';
+import { PersonalRoutineLog } from 'src/routine-logs/routine-logs.entity';
 import { FriendRequest, FriendRequestStatus } from 'src/friend-requests/friend-requests.entity';
-import { Routine } from 'src/routines/routines.entity';
+import { PersonalRoutine } from 'src/routines/routines.entity';
 import { CollaborativeRoutine } from 'src/routines/collaborative-routines.entity';
-import { RoutineMember } from 'src/routines/routine-members.entity';
+import { CollaborativeRoutineMember } from 'src/routines/routine-members.entity';
 import { ProfileResponseDto } from '../common/dto/users/profile-response.dto';
 import { FriendProfileResponseDto } from '../common/dto/users/friend-profile-response.dto';
 import { UpdateProfileDto } from '../common/dto/users/update-profile.dto';
@@ -20,20 +20,20 @@ export class UsersService {
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
 
-    @InjectRepository(RoutineLog)
-    private readonly logsRepo: Repository<RoutineLog>,
+    @InjectRepository(PersonalRoutineLog)
+    private readonly logsRepo: Repository<PersonalRoutineLog>,
 
     @InjectRepository(FriendRequest)
     private readonly friendRequestsRepo: Repository<FriendRequest>,
 
-    @InjectRepository(Routine)
-    private readonly routinesRepo: Repository<Routine>,
+    @InjectRepository(PersonalRoutine)
+    private readonly routinesRepo: Repository<PersonalRoutine>,
 
     @InjectRepository(CollaborativeRoutine)
     private readonly collabRoutinesRepo: Repository<CollaborativeRoutine>,
 
-    @InjectRepository(RoutineMember)
-    private readonly membersRepo: Repository<RoutineMember>,
+    @InjectRepository(CollaborativeRoutineMember)
+    private readonly membersRepo: Repository<CollaborativeRoutineMember>,
 
     private readonly dataSource: DataSource,
   ) {}
@@ -220,7 +220,7 @@ export class UsersService {
       });
 
       for (const routine of ownedCollabRoutines) {
-        const otherMembers = await manager.find(RoutineMember, {
+        const otherMembers = await manager.find(CollaborativeRoutineMember, {
           where: { collaborativeRoutineId: routine.id },
           order: { joinedAt: 'ASC' },
         });
@@ -233,7 +233,7 @@ export class UsersService {
           newCreatorMember.role = 'creator';
 
           await manager.save(CollaborativeRoutine, routine);
-          await manager.save(RoutineMember, newCreatorMember);
+          await manager.save(CollaborativeRoutineMember, newCreatorMember);
 
           this.logger.log(
             `Transferred ownership of group "${routine.routineName}" to user ${newCreatorMember.userId}`,
@@ -244,7 +244,7 @@ export class UsersService {
         }
       }
 
-      await manager.delete(Routine, { userId });
+      await manager.delete(PersonalRoutine, { userId });
       this.logger.log(`Cleaned up personal routines for user ${userId}`);
 
       await manager.delete(User, userId);

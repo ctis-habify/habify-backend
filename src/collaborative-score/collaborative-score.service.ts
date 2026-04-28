@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CollaborativeScore } from './collaborative-score.entity';
-import { RoutineMember } from '../routines/routine-members.entity';
+import { CollaborativeRoutineMember } from '../routines/routine-members.entity';
 import { User } from '../users/users.entity';
 import { LeaderboardEntryDto } from '../common/dto/collaborative-score/leaderboard-entry.dto';
 import { UserCupDto } from '../common/dto/collaborative-score/user-cup.dto';
@@ -26,8 +26,8 @@ export class CollaborativeScoreService {
   constructor(
     @InjectRepository(CollaborativeScore)
     private readonly scoreRepository: Repository<CollaborativeScore>,
-    @InjectRepository(RoutineMember)
-    private readonly memberRepository: Repository<RoutineMember>,
+    @InjectRepository(CollaborativeRoutineMember)
+    private readonly memberRepository: Repository<CollaborativeRoutineMember>,
     @InjectRepository(CollaborativeRoutineLog)
     private readonly collaborativeRoutineLogRepository: Repository<CollaborativeRoutineLog>,
   ) {}
@@ -95,10 +95,6 @@ export class CollaborativeScoreService {
     });
   }
 
-  /**
-   * Adds collaborative points to a user's score.
-   * Called when a collaborative routine log is verified/approved.
-   */
   async addPoints(userId: string, amount: number): Promise<CollaborativeScore> {
     const score = await this.findOrCreateScore(userId);
     score.totalPoints += amount;
@@ -108,9 +104,6 @@ export class CollaborativeScoreService {
     return this.scoreRepository.save(score);
   }
 
-  /**
-   * Finds an existing score record or creates a new one for the user.
-   */
   async findOrCreateScore(userId: string): Promise<CollaborativeScore> {
     let score = await this.scoreRepository.findOne({ where: { userId } });
 

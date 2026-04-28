@@ -2,10 +2,10 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Notification } from './notifications.entity';
-import { Routine } from '../routines/routines.entity';
-import { RoutineLog } from '../routine-logs/routine-logs.entity';
+import { PersonalRoutine } from '../routines/routines.entity';
+import { PersonalRoutineLog } from '../routine-logs/routine-logs.entity';
 import { CollaborativeRoutine } from '../routines/collaborative-routines.entity';
-import { RoutineMember } from '../routines/routine-members.entity';
+import { CollaborativeRoutineMember } from '../routines/routine-members.entity';
 import { CollaborativeRoutineLog } from '../routines/collaborative-routine-logs.entity';
 import { User } from '../users/users.entity';
 
@@ -18,10 +18,10 @@ import { AuthModule } from '../auth/auth.module';
     forwardRef(() => AuthModule),
     TypeOrmModule.forFeature([
       Notification,
-      Routine,
-      RoutineLog,
+      PersonalRoutine,
+      PersonalRoutineLog,
       CollaborativeRoutine,
-      RoutineMember,
+      CollaborativeRoutineMember,
       CollaborativeRoutineLog,
       User,
     ]),
